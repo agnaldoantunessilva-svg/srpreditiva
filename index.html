@@ -128,7 +128,6 @@
         <div class="filters">
             <select id="filtro-area"><option value="">Todas as Áreas (Abas)</option></select>
             <select id="filtro-local"><option value="">Todos os Locais</option></select>
-            <!-- FILTRO DE STATUS SEPARADO -->
             <select id="filtro-status">
                 <option value="">Todos os Status</option>
                 <option value="N">Normal (N)</option>
@@ -271,8 +270,7 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
-                const st2 = (linha['St-2'] || '').toString().trim().toUpperCase();
-                const st1 = (linha['St-1'] || '').toString().trim().toUpperCase();
+                // AQUI ESTÁ A CORREÇÃO: Lendo APENAS a coluna ST-0 (Situação Atual)
                 const st0 = (linha['St-0'] || '').toString().trim().toUpperCase();
                 
                 const relatorioRaw = linha['N.Relatório'] || linha['N. Relatório'] || '';
@@ -281,26 +279,26 @@
                 const temRelatorio = relatorioRaw.toString().trim() !== "";
                 const temSap = sapRaw.toString().trim() !== "";
 
-                const isA1A2A3A4 = (s) => ['A1', 'A2', 'A3', 'A4'].includes(s);
-                const isAlerta = isA1A2A3A4(st2) || isA1A2A3A4(st1) || isA1A2A3A4(st0);
+                // Ignora completamente status "P" (Parado)
+                if (st0 === 'P') return; 
 
-                const isNormal = (st2 === '' || st2 === 'N') && 
-                                 (st1 === '' || st1 === 'N') && 
-                                 (st0 === '' || st0 === 'N');
+                // Verifica se o status atual é um alerta válido
+                const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
 
-                if (isNormal && !temRelatorio) {
+                // Se não é alerta e não tem relatório, é Normal
+                if (!isAlerta && !temRelatorio) {
                     totalNormal++;
                 }
 
+                // Contagem de Alarmados (baseado no ST-0)
                 if (isAlerta && temRelatorio) {
                     if (temSap) {
                         programados++;
                     } else {
                         naoProgramados++;
-                        const isCriticoA2A4 = (st0 === 'A2' || st1 === 'A2' || st2 === 'A2' || 
-                                               st0 === 'A4' || st1 === 'A4' || st2 === 'A4');
                         
-                        if (isCriticoA2A4) {
+                        // Críticos sem SAP: Apenas se o ST-0 for A2 ou A4
+                        if (st0 === 'A2' || st0 === 'A4') {
                             criticosSemSap++;
                         }
                     }
@@ -325,17 +323,15 @@
                 
                 let matchStatus = true;
                 if (status) {
-                    const st2 = (linha['St-2'] || '').toString().toUpperCase().trim();
-                    const st1 = (linha['St-1'] || '').toString().toUpperCase().trim();
+                    // O FILTRO TAMBÉM LÊ APENAS O ST-0 AGORA
                     const st0 = (linha['St-0'] || '').toString().toUpperCase().trim();
                     
                     if (status === 'N') {
-                        matchStatus = [st2, st1, st0].every(s => s === 'N' || s === '');
+                        matchStatus = (st0 === 'N' || st0 === '');
                     } else if (['A1', 'A2', 'A3', 'A4'].includes(status)) {
-                        // Verifica se o status selecionado está em qualquer uma das colunas
-                        matchStatus = (st2 === status || st1 === status || st0 === status);
+                        matchStatus = (st0 === status);
                     } else if (status === 'P') {
-                        matchStatus = [st2, st1, st0].some(s => s === 'P');
+                        matchStatus = (st0 === 'P');
                     }
                 }
 
