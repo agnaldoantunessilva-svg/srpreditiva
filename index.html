@@ -222,7 +222,7 @@
                 })
                 .catch(error => {
                     console.error("Erro:", error);
-                    alert("Não foi possível carregar o Excel.\nMotivo: " + error.message + "\n\nDica: Use um servidor local (Live Server) ou GitHub Pages. O OneDrive bloqueia a leitura.");
+                    alert("Não foi possível carregar o Excel.\nMotivo: " + error.message);
                     loading.style.display = 'none';
                 });
         }
@@ -279,7 +279,7 @@
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // Lógica de Contagem Corrigida (Ignorando "P")
+        // Lógica de Contagem Corrigida (Ignorando "P" e usando Relatório como base)
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -287,33 +287,35 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
-                const st2 = (linha['St-2'] || '').toString().toUpperCase();
-                const st1 = (linha['St-1'] || '').toString().toUpperCase();
-                const st0 = (linha['St-0'] || '').toString().toUpperCase();
+                const st2 = (linha['St-2'] || '').toString().trim().toUpperCase();
+                const st1 = (linha['St-1'] || '').toString().trim().toUpperCase();
+                const st0 = (linha['St-0'] || '').toString().trim().toUpperCase();
                 
-                const temRelatorio = (linha['N.Relatório'] || '').toString().trim() !== "";
-                const temSap = (linha['N.SAP'] || '').toString().trim() !== "";
+                const relatorioRaw = linha['N.Relatório'] || linha['N. Relatório'] || '';
+                const sapRaw = linha['N.SAP'] || linha['N. SAP'] || '';
+                
+                const temRelatorio = relatorioRaw.toString().trim() !== "";
+                const temSap = sapRaw.toString().trim() !== "";
 
-                // --- REGRA DO "P" (PARADO) ---
-                // Se qualquer um dos status for "P", ignoramos a linha completamente nos contadores
+                // 1. REGRA DO "P" (PARADO) - Ignora a linha
                 const isParado = st2 === 'P' || st1 === 'P' || st0 === 'P';
                 if (isParado) return; 
 
                 const isAlerta = [st2, st1, st0].some(s => s.startsWith('A'));
-                const isNormal = !isAlerta; // Se não é alerta e não é parado, é normal (N ou vazio)
 
-                if (isNormal) {
+                // 2. TOTAL NORMAL: É 'N' (ou vazio) em todos e NÃO tem relatório
+                if (!isAlerta && !temRelatorio) {
                     totalNormal++;
                 }
 
-                // Contagem de Alarmados (Apenas quem tem Relatório)
+                // 3. ALARMADOS (Só entra aqui se tiver N.Relatório)
                 if (temRelatorio) {
                     if (temSap) {
                         programados++;
                     } else {
                         naoProgramados++;
-                        // Críticos sem SAP: P, A2 ou A4 sem programação
-                        if (isAlerta && (st0 === 'A2' || st0 === 'A4' || st1 === 'A2' || st1 === 'A4' || st2 === 'A2' || st2 === 'A4')) {
+                        // Críticos sem SAP: A2 ou A4 (P já foi ignorado)
+                        if (st0 === 'A2' || st0 === 'A4' || st1 === 'A2' || st1 === 'A4' || st2 === 'A2' || st2 === 'A4') {
                             criticosSemSap++;
                         }
                     }
@@ -365,7 +367,7 @@
         function formatarBadge(valor) {
             if (!valor || valor === 'N') return '<span class="badge badge-n">N</span>';
             if (valor === 'P') return '<span class="badge badge-parado">P</span>'; // Cinza
-            return `<span class="badge badge-a">${valor}</span>`; // Amarelo para A1-A4
+            return `<span class="badge badge-a">${valor}</span>`; // Amarelo
         }
 
         function formatarData(data) {
