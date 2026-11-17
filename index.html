@@ -128,10 +128,14 @@
         <div class="filters">
             <select id="filtro-area"><option value="">Todas as Áreas (Abas)</option></select>
             <select id="filtro-local"><option value="">Todos os Locais</option></select>
+            <!-- FILTRO DE STATUS SEPARADO -->
             <select id="filtro-status">
                 <option value="">Todos os Status</option>
                 <option value="N">Normal (N)</option>
-                <option value="A">Alerta (A1-A4)</option>
+                <option value="A1">Alerta A1</option>
+                <option value="A2">Alerta A2</option>
+                <option value="A3">Alerta A3</option>
+                <option value="A4">Alerta A4</option>
                 <option value="P">Parado (P)</option>
             </select>
             <input type="text" id="filtro-busca" placeholder="🔍 Buscar TAG, diagnóstico...">
@@ -277,32 +281,22 @@
                 const temRelatorio = relatorioRaw.toString().trim() !== "";
                 const temSap = sapRaw.toString().trim() !== "";
 
-                // Função auxiliar para checar se é um status de alerta válido (A1, A2, A3, A4)
                 const isA1A2A3A4 = (s) => ['A1', 'A2', 'A3', 'A4'].includes(s);
-
-                // Verifica se a linha tem algum status de alerta válido
                 const isAlerta = isA1A2A3A4(st2) || isA1A2A3A4(st1) || isA1A2A3A4(st0);
 
-                // Verifica se é Normal (N ou vazio)
                 const isNormal = (st2 === '' || st2 === 'N') && 
                                  (st1 === '' || st1 === 'N') && 
                                  (st0 === '' || st0 === 'N');
 
-                // --- REGRAS DE CONTAGEM ---
-
-                // 1. TOTAL NORMAL
                 if (isNormal && !temRelatorio) {
                     totalNormal++;
                 }
 
-                // 2. ALARMADOS (Só entra se for A1, A2, A3 ou A4)
                 if (isAlerta && temRelatorio) {
                     if (temSap) {
                         programados++;
                     } else {
                         naoProgramados++;
-                        
-                        // 3. CRÍTICOS SEM SAP (Apenas A2 e A4)
                         const isCriticoA2A4 = (st0 === 'A2' || st1 === 'A2' || st2 === 'A2' || 
                                                st0 === 'A4' || st1 === 'A4' || st2 === 'A4');
                         
@@ -331,14 +325,15 @@
                 
                 let matchStatus = true;
                 if (status) {
-                    const st2 = (linha['St-2'] || '').toString().toUpperCase();
-                    const st1 = (linha['St-1'] || '').toString().toUpperCase();
-                    const st0 = (linha['St-0'] || '').toString().toUpperCase();
+                    const st2 = (linha['St-2'] || '').toString().toUpperCase().trim();
+                    const st1 = (linha['St-1'] || '').toString().toUpperCase().trim();
+                    const st0 = (linha['St-0'] || '').toString().toUpperCase().trim();
                     
                     if (status === 'N') {
                         matchStatus = [st2, st1, st0].every(s => s === 'N' || s === '');
-                    } else if (status === 'A') {
-                        matchStatus = [st2, st1, st0].some(s => ['A1', 'A2', 'A3', 'A4'].includes(s));
+                    } else if (['A1', 'A2', 'A3', 'A4'].includes(status)) {
+                        // Verifica se o status selecionado está em qualquer uma das colunas
+                        matchStatus = (st2 === status || st1 === status || st0 === status);
                     } else if (status === 'P') {
                         matchStatus = [st2, st1, st0].some(s => s === 'P');
                     }
