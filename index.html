@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Preditiva — Vibrações</title>
-    <!-- Biblioteca para ler o Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -19,7 +18,6 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--fundo); margin: 0; padding: 20px; }
         
-        /* Header */
         .header {
             background-color: var(--azul-escuro);
             color: white;
@@ -40,7 +38,6 @@
         }
         .header-btns button:hover { background: #e5e7eb; }
 
-        /* Abas de Navegação */
         .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .nav-tabs button {
             padding: 10px 20px; border: 1px solid #d1d5db; background: white;
@@ -48,7 +45,6 @@
         }
         .nav-tabs button.active { background: var(--azul-escuro); color: white; border-color: var(--azul-escuro); }
 
-        /* Cards de Resumo */
         .cards-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
         .card {
             background: white; padding: 20px; border-radius: 8px;
@@ -67,13 +63,11 @@
         .card p { margin: 5px 0 0; font-size: 0.85rem; font-weight: bold; color: #4b5563; }
         .card span { font-size: 0.75rem; color: #9ca3af; display: block; margin-top: 5px; }
 
-        /* Filtros */
         .filters { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; }
         .filters select, .filters input {
             padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 5px; flex: 1; outline: none;
         }
 
-        /* Tabela */
         .table-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
         th { background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: bold; }
@@ -82,15 +76,13 @@
         .badge-n { background: var(--verde); }
         .badge-a { background: #f59e0b; }
         .badge-p { background: var(--vermelho); }
-        .badge-parado { background: #9ca3af; } /* Cinza para Parado */
+        .badge-parado { background: #9ca3af; }
         
-        /* Loading */
         #loading { display: none; text-align: center; padding: 20px; color: var(--azul-escuro); font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
     <div class="header">
         <h1><span class="logo">SR</span> Preditiva SR | Montenegro RS</h1>
         <div class="data" id="dataHora">Carregando...</div>
@@ -100,20 +92,16 @@
         </div>
     </div>
 
-    <!-- Navegação -->
     <div class="nav-tabs">
         <button onclick="mudarAba('ANUAL')" id="tab-ANUAL" class="active">📅 Cronograma Anual</button>
         <button onclick="mudarAba('VIBRACOES')" id="tab-VIBRACOES">📋 Lista de Vibrações</button>
-        <!-- Botão Termografia removido -->
     </div>
 
     <div id="loading">Lendo o arquivo Excel, aguarde...</div>
 
-    <!-- Conteúdo Principal -->
     <div id="conteudo-principal">
         <h2 style="color: var(--azul-escuro); margin-bottom: 15px;">Análise de Vibrações</h2>
         
-        <!-- Cards -->
         <div class="cards-container">
             <div class="card total">
                 <h2 id="total-normal">0</h2>
@@ -137,7 +125,6 @@
             </div>
         </div>
 
-        <!-- Filtros -->
         <div class="filters">
             <select id="filtro-area"><option value="">Todas as Áreas (Abas)</option></select>
             <select id="filtro-local"><option value="">Todos os Locais</option></select>
@@ -150,7 +137,6 @@
             <input type="text" id="filtro-busca" placeholder="🔍 Buscar TAG, diagnóstico...">
         </div>
 
-        <!-- Tabela -->
         <div class="table-container">
             <table>
                 <thead>
@@ -168,15 +154,12 @@
                         <th>SAP</th>
                     </tr>
                 </thead>
-                <tbody id="corpo-tabela">
-                    <!-- Linhas inseridas via JS -->
-                </tbody>
+                <tbody id="corpo-tabela"></tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // Variáveis Globais
         let dadosGlobais = []; 
         let dadosFiltrados = []; 
         let abaAtual = 'VIBRACOES';
@@ -208,7 +191,6 @@
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
 
-            // Nome exato do arquivo na mesma pasta
             const urlArquivo = 'Análise de Vibrações.xlsx';
 
             fetch(urlArquivo)
@@ -240,7 +222,6 @@
                 });
             });
 
-            // Remover Duplicatas (Área + Local + TAG)
             const vistos = new Set();
             dadosGlobais = todosOsDados.filter(linha => {
                 const area = (linha['Área'] || '').toString().trim().toUpperCase();
@@ -279,7 +260,6 @@
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // Lógica de Contagem Corrigida (Ignorando "P" e usando Relatório como base)
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -297,25 +277,36 @@
                 const temRelatorio = relatorioRaw.toString().trim() !== "";
                 const temSap = sapRaw.toString().trim() !== "";
 
-                // 1. REGRA DO "P" (PARADO) - Ignora a linha
-                const isParado = st2 === 'P' || st1 === 'P' || st0 === 'P';
-                if (isParado) return; 
+                // Função auxiliar para checar se é um status de alerta válido (A1, A2, A3, A4)
+                const isA1A2A3A4 = (s) => ['A1', 'A2', 'A3', 'A4'].includes(s);
 
-                const isAlerta = [st2, st1, st0].some(s => s.startsWith('A'));
+                // Verifica se a linha tem algum status de alerta válido
+                const isAlerta = isA1A2A3A4(st2) || isA1A2A3A4(st1) || isA1A2A3A4(st0);
 
-                // 2. TOTAL NORMAL: É 'N' (ou vazio) em todos e NÃO tem relatório
-                if (!isAlerta && !temRelatorio) {
+                // Verifica se é Normal (N ou vazio)
+                const isNormal = (st2 === '' || st2 === 'N') && 
+                                 (st1 === '' || st1 === 'N') && 
+                                 (st0 === '' || st0 === 'N');
+
+                // --- REGRAS DE CONTAGEM ---
+
+                // 1. TOTAL NORMAL
+                if (isNormal && !temRelatorio) {
                     totalNormal++;
                 }
 
-                // 3. ALARMADOS (Só entra aqui se tiver N.Relatório)
-                if (temRelatorio) {
+                // 2. ALARMADOS (Só entra se for A1, A2, A3 ou A4)
+                if (isAlerta && temRelatorio) {
                     if (temSap) {
                         programados++;
                     } else {
                         naoProgramados++;
-                        // Críticos sem SAP: A2 ou A4 (P já foi ignorado)
-                        if (st0 === 'A2' || st0 === 'A4' || st1 === 'A2' || st1 === 'A4' || st2 === 'A2' || st2 === 'A4') {
+                        
+                        // 3. CRÍTICOS SEM SAP (Apenas A2 e A4)
+                        const isCriticoA2A4 = (st0 === 'A2' || st1 === 'A2' || st2 === 'A2' || 
+                                               st0 === 'A4' || st1 === 'A4' || st2 === 'A4');
+                        
+                        if (isCriticoA2A4) {
                             criticosSemSap++;
                         }
                     }
@@ -347,7 +338,7 @@
                     if (status === 'N') {
                         matchStatus = [st2, st1, st0].every(s => s === 'N' || s === '');
                     } else if (status === 'A') {
-                        matchStatus = [st2, st1, st0].some(s => s.startsWith('A'));
+                        matchStatus = [st2, st1, st0].some(s => ['A1', 'A2', 'A3', 'A4'].includes(s));
                     } else if (status === 'P') {
                         matchStatus = [st2, st1, st0].some(s => s === 'P');
                     }
@@ -366,8 +357,8 @@
 
         function formatarBadge(valor) {
             if (!valor || valor === 'N') return '<span class="badge badge-n">N</span>';
-            if (valor === 'P') return '<span class="badge badge-parado">P</span>'; // Cinza
-            return `<span class="badge badge-a">${valor}</span>`; // Amarelo
+            if (valor === 'P') return '<span class="badge badge-parado">P</span>';
+            return `<span class="badge badge-a">${valor}</span>`;
         }
 
         function formatarData(data) {
