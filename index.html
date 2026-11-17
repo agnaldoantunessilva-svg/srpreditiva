@@ -74,13 +74,13 @@
         th { background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: bold; }
         td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
         
-        /* --- CORES DOS BADGES --- */
+        /* --- CORES DOS BADGES CORRIGIDAS --- */
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: white; }
         .badge-n { background: var(--verde); }
         .badge-a1 { background: #f59e0b; } /* Amarelo */
         .badge-a2 { background: #ef4444; } /* Vermelho */
         .badge-a3 { background: #f97316; } /* Laranja */
-        .badge-a4 { background: #a855f7; } /* Lilás */
+        .badge-a4 { background: var(--lilas) !important; } /* Lilás (Forçado com !important) */
         .badge-p { background: #9ca3af; } /* Cinza */
         
         #loading { display: none; text-align: center; padding: 20px; color: var(--azul-escuro); font-weight: bold; }
@@ -92,9 +92,8 @@
         <h1><span class="logo">SR</span> Preditiva SR | Montenegro RS</h1>
         <div class="data" id="dataHora">Carregando...</div>
         <div class="header-btns">
-            <!-- Botão Auto -->
-            <button onclick="carregarExcel()">📂 Atualizar Preditiva (Auto)</button>
-            <!-- Botão Manual (Abre a janela de arquivo) -->
+            <button onclick="carregarExcelAuto()">📂 Atualizar Preditiva (Auto)</button>
+            <!-- Botão que abre a janela de seleção do Windows -->
             <button onclick="document.getElementById('input-file').click()">📅 Atualizar Cronograma (Manual)</button>
             <input type="file" id="input-file" accept=".xlsx, .xls" style="display: none;" onchange="lerArquivoLocal(this)">
         </div>
@@ -177,9 +176,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             atualizarDataHora();
             setInterval(atualizarDataHora, 1000);
-            
-            // Tenta carregar automaticamente ao abrir
-            carregarExcel(); 
+            carregarExcelAuto(); 
             
             document.getElementById('filtro-area').addEventListener('change', aplicarFiltros);
             document.getElementById('filtro-local').addEventListener('change', aplicarFiltros);
@@ -197,17 +194,16 @@
             document.getElementById('tab-' + aba).classList.add('active');
         }
 
-        // 1. CARREGAMENTO AUTOMÁTICO (GITHUB PAGES)
-        function carregarExcel() {
+        // --- FUNÇÃO AUTO (GITHUB) ---
+        function carregarExcelAuto() {
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
 
-            // O timestamp força o navegador a baixar a versão mais nova, ignorando o cache
             const urlArquivo = 'Análise de Vibrações.xlsx?v=' + new Date().getTime();
 
             fetch(urlArquivo)
                 .then(response => {
-                    if (!response.ok) throw new Error("Arquivo não encontrado no GitHub.");
+                    if (!response.ok) throw new Error("Arquivo não encontrado.");
                     return response.arrayBuffer();
                 })
                 .then(arrayBuffer => {
@@ -215,13 +211,12 @@
                     processarWorkbook(workbook);
                 })
                 .catch(error => {
-                    console.warn("Aviso: Não foi possível carregar automaticamente.", error);
-                    // Se falhar, apenas esconde o loading. O usuário pode usar o botão manual.
+                    console.warn("Erro Auto:", error);
                     loading.style.display = 'none';
                 });
         }
 
-        // 2. CARREGAMENTO MANUAL (PELO BOTÃO "ATUALIZAR CRONOGRAMA")
+        // --- FUNÇÃO MANUAL (SELECIONAR ARQUIVO DO PC) ---
         function lerArquivoLocal(input) {
             const file = input.files[0];
             if (!file) return;
@@ -235,19 +230,17 @@
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 processarWorkbook(workbook);
                 alert("Cronograma importado com sucesso do seu computador!");
-                input.value = ''; // Limpa o campo para permitir selecionar o mesmo arquivo de novo
+                input.value = ''; 
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 3. PROCESSAMENTO DOS DADOS (IGUAL PARA OS DOIS MÉTODOS)
         function processarWorkbook(workbook) {
             let todosOsDados = [];
 
             workbook.SheetNames.forEach(nomeAba => {
                 const worksheet = workbook.Sheets[nomeAba];
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
                 json.forEach(linha => {
                     linha['_AbaOrigem'] = nomeAba;
                     todosOsDados.push(linha);
@@ -261,7 +254,6 @@
                 const local = (linha['Local'] || '').toString().trim().toUpperCase();
                 const tag = (linha['TAG'] || '').toString().trim().toUpperCase();
                 const chave = `${area}|${local}|${tag}`;
-                
                 if (vistos.has(chave)) return false;
                 vistos.add(chave);
                 return true;
@@ -277,7 +269,6 @@
         function preencherFiltros() {
             const selectArea = document.getElementById('filtro-area');
             const selectLocal = document.getElementById('filtro-local');
-            
             const areas = new Set();
             const locais = new Set();
 
@@ -288,12 +279,11 @@
 
             selectArea.innerHTML = '<option value="">Todas as Áreas (Abas)</option>';
             areas.forEach(area => selectArea.innerHTML += `<option value="${area}">${area}</option>`);
-
             selectLocal.innerHTML = '<option value="">Todos os Locais</option>';
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // 4. LÓGICA DE CONTAGEM (CORRIGIDA BASEADA NO ST-0)
+        // --- LÓGICA DE CONTAGEM BLINDADA ---
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -301,35 +291,32 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
-                // Obtém o status da última coluna ST-0
                 const st0 = (linha['St-0'] || '').toString().trim().toUpperCase();
                 
-                // Obtém os valores do relatório e SAP, limpando espaços
+                // Pega o valor cru do SAP e do Relatório
                 const relatorioRaw = linha['N.Relatório'] || linha['N. Relatório'] || '';
                 const sapRaw = linha['N.SAP'] || linha['N. SAP'] || '';
                 
-                const temRelatorio = relatorioRaw.toString().trim() !== "";
-                const temSap = sapRaw.toString().trim() !== "";
+                // Limpa espaços e converte para string
+                const temRelatorio = String(relatorioRaw).trim().length > 0;
+                const temSap = String(sapRaw).trim().length > 0;
 
-                // Se for Parado, ignora na contagem
+                // Ignora Parados
                 if (st0 === 'P') return; 
 
-                // Verifica se é Alerta
                 const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
 
-                // REGRA 1: TOTAL NORMAL (Não é alerta e não tem relatório)
+                // Normal
                 if (!isAlerta && !temRelatorio) {
                     totalNormal++;
                 }
 
-                // REGRA 2: ALARMADOS (É alerta e tem relatório)
+                // Alarmados
                 if (isAlerta && temRelatorio) {
                     if (temSap) {
-                        programados++; // Tem alerta, relatório e SAP
+                        programados++;
                     } else {
-                        naoProgramados++; // Tem alerta e relatório, mas falta SAP
-                        
-                        // REGRA 3: CRÍTICOS SEM SAP (É A2 ou A4 e não tem SAP)
+                        naoProgramados++;
                         if (st0 === 'A2' || st0 === 'A4') {
                             criticosSemSap++;
                         }
@@ -356,7 +343,6 @@
                 let matchStatus = true;
                 if (status) {
                     const st0 = (linha['St-0'] || '').toString().toUpperCase().trim();
-                    
                     if (status === 'N') {
                         matchStatus = (st0 === 'N' || st0 === '');
                     } else if (['A1', 'A2', 'A3', 'A4'].includes(status)) {
@@ -377,13 +363,12 @@
             renderizarTabela(dadosFiltrados);
         }
 
-        // 5. FORMATAÇÃO DOS BADGES (CORES)
         function formatarBadge(valor) {
             if (!valor || valor === 'N') return '<span class="badge badge-n">N</span>';
             if (valor === 'P') return '<span class="badge badge-p">P</span>';
-            if (valor === 'A1') return '<span class="badge badge-a1">A1</span>'; // Amarelo
-            if (valor === 'A2') return '<span class="badge badge-a2">A2</span>'; // Vermelho
-            if (valor === 'A3') return '<span class="badge badge-a3">A3</span>'; // Laranja
+            if (valor === 'A1') return '<span class="badge badge-a1">A1</span>'; 
+            if (valor === 'A2') return '<span class="badge badge-a2">A2</span>'; 
+            if (valor === 'A3') return '<span class="badge badge-a3">A3</span>'; 
             if (valor === 'A4') return '<span class="badge badge-a4">A4</span>'; // Lilás
             return `<span class="badge badge-a">${valor}</span>`;
         }
