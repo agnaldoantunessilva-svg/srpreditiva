@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Preditiva — Vibrações</title>
+    <!-- Biblioteca para ler o Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --azul-escuro: #1e3a8a;
+            --azul-claro: #3b82f6;
+            --verde: #10b981;
+            --azul-alerta: #3b82f6;
+            --cinza-alerta: #6b7280;
+            --vermelho: #ef4444;
+            --fundo: #f3f4f6;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--fundo); margin: 0; padding: 20px; }
+        
+        /* Header */
+        .header {
+            background-color: var(--azul-escuro);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        .header .logo { background: white; color: var(--azul-escuro); padding: 5px 10px; border-radius: 5px; font-weight: bold; }
+        .header .data { font-size: 0.9rem; opacity: 0.8; }
+        .header-btns button {
+            background: white; color: var(--azul-escuro); border: none; padding: 8px 15px;
+            border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .header-btns button:hover { background: #e5e7eb; }
+
+        /* Abas de Navegação */
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-tabs button {
+            padding: 10px 20px; border: 1px solid #d1d5db; background: white;
+            border-radius: 5px; cursor: pointer; font-weight: 500; color: #374151;
+        }
+        .nav-tabs button.active { background: var(--azul-escuro); color: white; border-color: var(--azul-escuro); }
+
+        /* Cards de Resumo */
+        .cards-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card {
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;
+            border-left: 5px solid transparent;
+        }
+        .card.total { border-left-color: var(--verde); }
+        .card.programados { border-left-color: var(--azul-alerta); }
+        .card.nao-programados { border-left-color: var(--cinza-alerta); }
+        .card.criticos { border-left-color: var(--vermelho); }
+        .card h2 { margin: 0; font-size: 2.5rem; }
+        .card.total h2 { color: var(--verde); }
+        .card.programados h2 { color: var(--azul-alerta); }
+        .card.nao-programados h2 { color: var(--cinza-alerta); }
+        .card.criticos h2 { color: var(--vermelho); }
+        .card p { margin: 5px 0 0; font-size: 0.85rem; font-weight: bold; color: #4b5563; }
+        .card span { font-size: 0.75rem; color: #9ca3af; display: block; margin-top: 5px; }
+
+        /* Filtros */
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; }
+        .filters select, .filters input {
+            padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 5px; flex: 1; outline: none;
+        }
+
+        /* Tabela */
+        .table-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        th { background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: bold; }
+        td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: white; }
+        .badge-n { background: var(--verde); }
+        .badge-a { background: #f59e0b; }
+        .badge-p { background: var(--vermelho); }
+        .badge-parado { background: #9ca3af; } /* Cinza para Parado */
+        
+        /* Loading */
+        #loading { display: none; text-align: center; padding: 20px; color: var(--azul-escuro); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1><span class="logo">SR</span> Preditiva SR | Montenegro RS</h1>
+        <div class="data" id="dataHora">Carregando...</div>
+        <div class="header-btns">
+            <button onclick="carregarExcel()">📂 Atualizar Preditiva (xls / .xlsx)</button>
+            <button>📅 Atualizar Cronograma</button>
+        </div>
+    </div>
+
+    <!-- Navegação -->
+    <div class="nav-tabs">
+        <button onclick="mudarAba('ANUAL')" id="tab-ANUAL" class="active">📅 Cronograma Anual</button>
+        <button onclick="mudarAba('VIBRACOES')" id="tab-VIBRACOES">📋 Lista de Vibrações</button>
+        <!-- Botão Termografia removido -->
+    </div>
+
+    <div id="loading">Lendo o arquivo Excel, aguarde...</div>
+
+    <!-- Conteúdo Principal -->
+    <div id="conteudo-principal">
+        <h2 style="color: var(--azul-escuro); margin-bottom: 15px;">Análise de Vibrações</h2>
+        
+        <!-- Cards -->
+        <div class="cards-container">
+            <div class="card total">
+                <h2 id="total-normal">0</h2>
+                <p>TOTAL NORMAL</p>
+                <span>Equipamentos em condição normal</span>
+            </div>
+            <div class="card programados">
+                <h2 id="alertas-programados">0</h2>
+                <p>ALERTAS PROGRAMADOS</p>
+                <span>A1/A2/A3/A4 com SAP</span>
+            </div>
+            <div class="card nao-programados">
+                <h2 id="alertas-nao-programados">0</h2>
+                <p>ALERTAS NÃO PROGRAMADOS</p>
+                <span>A1/A2/A3/A4 sem SAP</span>
+            </div>
+            <div class="card criticos">
+                <h2 id="criticos-sem-sap">0</h2>
+                <p>CRÍTICOS SEM SAP</p>
+                <span>A2/A4 sem programação</span>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters">
+            <select id="filtro-area"><option value="">Todas as Áreas (Abas)</option></select>
+            <select id="filtro-local"><option value="">Todos os Locais</option></select>
+            <select id="filtro-status">
+                <option value="">Todos os Status</option>
+                <option value="N">Normal (N)</option>
+                <option value="A">Alerta (A1-A4)</option>
+                <option value="P">Parado (P)</option>
+            </select>
+            <input type="text" id="filtro-busca" placeholder="🔍 Buscar TAG, diagnóstico...">
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ÁREA (ABA)</th>
+                        <th>LOCAL</th>
+                        <th>TAG</th>
+                        <th>ST-2</th>
+                        <th>ST-1</th>
+                        <th>ST-0</th>
+                        <th>DATA INSPEÇÃO</th>
+                        <th>DIAGNÓSTICO</th>
+                        <th>RECOMENDAÇÕES</th>
+                        <th>N. RELATÓRIO</th>
+                        <th>SAP</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela">
+                    <!-- Linhas inseridas via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis Globais
+        let dadosGlobais = []; 
+        let dadosFiltrados = []; 
+        let abaAtual = 'VIBRACOES';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            atualizarDataHora();
+            setInterval(atualizarDataHora, 1000);
+            carregarExcel(); 
+            
+            document.getElementById('filtro-area').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-local').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-busca').addEventListener('input', aplicarFiltros);
+        });
+
+        function atualizarDataHora() {
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+            document.getElementById('dataHora').innerText = dataFormatada;
+        }
+
+        function mudarAba(aba) {
+            abaAtual = aba;
+            document.querySelectorAll('.nav-tabs button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + aba).classList.add('active');
+        }
+
+        function carregarExcel() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            // Nome exato do arquivo na mesma pasta
+            const urlArquivo = 'Análise de Vibrações.xlsx';
+
+            fetch(urlArquivo)
+                .then(response => {
+                    if (!response.ok) throw new Error("Arquivo não encontrado.");
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => {
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+                    processarWorkbook(workbook);
+                })
+                .catch(error => {
+                    console.error("Erro:", error);
+                    alert("Não foi possível carregar o Excel.\nMotivo: " + error.message + "\n\nDica: Use um servidor local (Live Server) ou GitHub Pages. O OneDrive bloqueia a leitura.");
+                    loading.style.display = 'none';
+                });
+        }
+
+        function processarWorkbook(workbook) {
+            let todosOsDados = [];
+
+            workbook.SheetNames.forEach(nomeAba => {
+                const worksheet = workbook.Sheets[nomeAba];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                json.forEach(linha => {
+                    linha['_AbaOrigem'] = nomeAba;
+                    todosOsDados.push(linha);
+                });
+            });
+
+            // Remover Duplicatas (Área + Local + TAG)
+            const vistos = new Set();
+            dadosGlobais = todosOsDados.filter(linha => {
+                const area = (linha['Área'] || '').toString().trim().toUpperCase();
+                const local = (linha['Local'] || '').toString().trim().toUpperCase();
+                const tag = (linha['TAG'] || '').toString().trim().toUpperCase();
+                const chave = `${area}|${local}|${tag}`;
+                
+                if (vistos.has(chave)) return false;
+                vistos.add(chave);
+                return true;
+            });
+
+            preencherFiltros();
+            atualizarContadores();
+            dadosFiltrados = [...dadosGlobais];
+            renderizarTabela(dadosFiltrados);
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function preencherFiltros() {
+            const selectArea = document.getElementById('filtro-area');
+            const selectLocal = document.getElementById('filtro-local');
+            
+            const areas = new Set();
+            const locais = new Set();
+
+            dadosGlobais.forEach(linha => {
+                if (linha['Área']) areas.add(linha['Área']);
+                if (linha['Local']) locais.add(linha['Local']);
+            });
+
+            selectArea.innerHTML = '<option value="">Todas as Áreas (Abas)</option>';
+            areas.forEach(area => selectArea.innerHTML += `<option value="${area}">${area}</option>`);
+
+            selectLocal.innerHTML = '<option value="">Todos os Locais</option>';
+            locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
+        }
+
+        // Lógica de Contagem Corrigida (Ignorando "P")
+        function atualizarContadores() {
+            let totalNormal = 0;
+            let programados = 0;
+            let naoProgramados = 0;
+            let criticosSemSap = 0;
+
+            dadosGlobais.forEach(linha => {
+                const st2 = (linha['St-2'] || '').toString().toUpperCase();
+                const st1 = (linha['St-1'] || '').toString().toUpperCase();
+                const st0 = (linha['St-0'] || '').toString().toUpperCase();
+                
+                const temRelatorio = (linha['N.Relatório'] || '').toString().trim() !== "";
+                const temSap = (linha['N.SAP'] || '').toString().trim() !== "";
+
+                // --- REGRA DO "P" (PARADO) ---
+                // Se qualquer um dos status for "P", ignoramos a linha completamente nos contadores
+                const isParado = st2 === 'P' || st1 === 'P' || st0 === 'P';
+                if (isParado) return; 
+
+                const isAlerta = [st2, st1, st0].some(s => s.startsWith('A'));
+                const isNormal = !isAlerta; // Se não é alerta e não é parado, é normal (N ou vazio)
+
+                if (isNormal) {
+                    totalNormal++;
+                }
+
+                // Contagem de Alarmados (Apenas quem tem Relatório)
+                if (temRelatorio) {
+                    if (temSap) {
+                        programados++;
+                    } else {
+                        naoProgramados++;
+                        // Críticos sem SAP: P, A2 ou A4 sem programação
+                        if (isAlerta && (st0 === 'A2' || st0 === 'A4' || st1 === 'A2' || st1 === 'A4' || st2 === 'A2' || st2 === 'A4')) {
+                            criticosSemSap++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('total-normal').innerText = totalNormal;
+            document.getElementById('alertas-programados').innerText = programados;
+            document.getElementById('alertas-nao-programados').innerText = naoProgramados;
+            document.getElementById('criticos-sem-sap').innerText = criticosSemSap;
+        }
+
+        function aplicarFiltros() {
+            const area = document.getElementById('filtro-area').value;
+            const local = document.getElementById('filtro-local').value;
+            const status = document.getElementById('filtro-status').value;
+            const busca = document.getElementById('filtro-busca').value.toLowerCase();
+
+            dadosFiltrados = dadosGlobais.filter(linha => {
+                const matchArea = !area || linha['Área'] === area;
+                const matchLocal = !local || linha['Local'] === local;
+                
+                let matchStatus = true;
+                if (status) {
+                    const st2 = (linha['St-2'] || '').toString().toUpperCase();
+                    const st1 = (linha['St-1'] || '').toString().toUpperCase();
+                    const st0 = (linha['St-0'] || '').toString().toUpperCase();
+                    
+                    if (status === 'N') {
+                        matchStatus = [st2, st1, st0].every(s => s === 'N' || s === '');
+                    } else if (status === 'A') {
+                        matchStatus = [st2, st1, st0].some(s => s.startsWith('A'));
+                    } else if (status === 'P') {
+                        matchStatus = [st2, st1, st0].some(s => s === 'P');
+                    }
+                }
+
+                const matchBusca = !busca || 
+                    (linha['TAG'] && linha['TAG'].toString().toLowerCase().includes(busca)) ||
+                    (linha['Diagnósticos'] && linha['Diagnósticos'].toString().toLowerCase().includes(busca)) ||
+                    (linha['Local'] && linha['Local'].toString().toLowerCase().includes(busca));
+
+                return matchArea && matchLocal && matchStatus && matchBusca;
+            });
+
+            renderizarTabela(dadosFiltrados);
+        }
+
+        function formatarBadge(valor) {
+            if (!valor || valor === 'N') return '<span class="badge badge-n">N</span>';
+            if (valor === 'P') return '<span class="badge badge-parado">P</span>'; // Cinza
+            return `<span class="badge badge-a">${valor}</span>`; // Amarelo para A1-A4
+        }
+
+        function formatarData(data) {
+            if (!data) return '—';
+            if (typeof data === 'number') {
+                const dateObj = new Date((data - 25569) * 86400 * 1000);
+                return dateObj.toLocaleDateString('pt-BR');
+            }
+            try {
+                const d = new Date(data);
+                if (isNaN(d.getTime())) return data;
+                return d.toLocaleDateString('pt-BR');
+            } catch (e) {
+                return data;
+            }
+        }
+
+        function renderizarTabela(dados) {
+            const tbody = document.getElementById('corpo-tabela');
+            tbody.innerHTML = ''; 
+
+            if (dados.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px;">Nenhum registro encontrado.</td></tr>';
+                return;
+            }
+
+            dados.forEach(linha => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td><strong>${linha['Área'] || '—'}</strong></td>
+                    <td>${linha['Local'] || '—'}</td>
+                    <td style="color: var(--azul-claro); font-weight: bold;">${linha['TAG'] || '—'}</td>
+                    <td>${formatarBadge(linha['St-2'])}</td>
+                    <td>${formatarBadge(linha['St-1'])}</td>
+                    <td>${formatarBadge(linha['St-0'])}</td>
+                    <td>${formatarData(linha['Dta St-0'] || linha['Data Inspeção'])}</td>
+                    <td>${linha['Diagnósticos'] || '—'}</td>
+                    <td>${linha['Recomendações'] || '—'}</td>
+                    <td>${linha['N.Relatório'] || '—'}</td>
+                    <td>${linha['N.SAP'] || '—'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
