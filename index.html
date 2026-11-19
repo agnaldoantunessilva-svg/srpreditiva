@@ -243,6 +243,7 @@
                 });
             });
 
+            // Remove duplicatas
             const vistos = new Set();
             dadosGlobais = todosOsDados.filter(linha => {
                 const area = (linha['Área'] || '').toString().trim().toUpperCase();
@@ -278,7 +279,7 @@
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // --- LÓGICA DE CONTAGEM CORRIGIDA CONFORME SUA SOLICITAÇÃO ---
+        // --- LÓGICA DE CONTAGEM BLINDADA (PARA BATER OS 39 REGISTROS) ---
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -286,29 +287,34 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
-                // Força a leitura correta da coluna ST-0 (Situação Atual)
-                const st0 = (linha['St-0'] || '').toString().trim().toUpperCase();
+                // 1. Limpa o ST-0 (remove espaços ocultos e força maiúsculo)
+                const st0 = (linha['St-0'] || '').toString().replace(/\s+/g, '').toUpperCase();
                 
-                // Limpa o campo N.SAP (tanto "N.SAP" quanto "N. SAP")
-                let sapRaw = linha['N.SAP'] !== undefined ? linha['N.SAP'] : linha['N. SAP'];
-                const sapStr = (sapRaw !== null && sapRaw !== undefined) ? String(sapRaw).trim().toUpperCase() : '';
-                const temSap = (sapStr !== '' && sapStr !== 'NULL' && sapStr !== 'UNDEFINED');
-
-                // Ignora Parados (P) ou vazios para contagem de alarmes
+                // 2. Limpa o N.SAP (remove espaços ocultos e verifica nulidades)
+                let sapRaw = (linha['N.SAP'] !== undefined) ? linha['N.SAP'] : linha['N. SAP'];
+                
+                // Converte para string, limpa, e checa se é realmente "vazio"
+                let sapStr = (sapRaw !== null && sapRaw !== undefined) ? String(sapRaw).trim() : '';
+                const sapInvalido = sapStr === '' || sapStr === '0' || sapStr.toUpperCase() === 'NULL' || sapStr.toUpperCase() === 'UNDEFINED' || sapStr === '-';
+                
+                // Ignora Parados (P) ou vazios
                 if (st0 === 'P' || st0 === '') return;
 
                 const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
 
                 if (!isAlerta) {
-                    // É Normal (N ou outro valor)
+                    // Se não for Alerta, é Normal
                     totalNormal++;
                 } else {
-                    // É Alerta (A1, A2, A3, A4)
-                    if (temSap) {
+                    // Se for Alerta (A1, A2, A3, A4)
+                    if (!sapInvalido) {
+                        // Tem um SAP válido
                         programados++;
                     } else {
+                        // Não tem SAP válido (é nulo/vazio)
                         naoProgramados++;
-                        // Se for A2 ou A4 e NÃO tem SAP, é Crítico
+                        
+                        // Conta os críticos A2 e A4 sem SAP
                         if (st0 === 'A2' || st0 === 'A4') {
                             criticosSemSap++;
                         }
@@ -316,11 +322,18 @@
                 }
             });
 
-            // Atualiza os números na tela
+            // Atualiza a tela
             document.getElementById('total-normal').innerText = totalNormal;
             document.getElementById('alertas-programados').innerText = programados;
             document.getElementById('alertas-nao-programados').innerText = naoProgramados;
             document.getElementById('criticos-sem-sap').innerText = criticosSemSap;
+
+            // Log para você conferir no console do navegador (F12) se os números bateram
+            console.log("--- RESULTADO DA CONTAGEM ---");
+            console.log("Total Normal:", totalNormal);
+            console.log("Programados:", programados);
+            console.log("Não Programados:", naoProgramados);
+            console.log("Críticos Sem SAP (A2/A4):", criticosSemSap);
         }
 
         function aplicarFiltros() {
