@@ -159,7 +159,7 @@
                         <th>DIAGNÓSTICO</th>
                         <th>RECOMENDAÇÕES</th>
                         <th>N. RELATÓRIO</th>
-                        <th>SAP</th>
+                        <th>N. SAP</th>
                     </tr>
                 </thead>
                 <tbody id="corpo-tabela"></tbody>
@@ -231,11 +231,27 @@
             reader.readAsArrayBuffer(file);
         }
 
+        // FUNÇÃO PARA ACHAR A COLUNA CORRETA IGNORANDO ESPAÇOS E PONTOS
+        function getValorColuna(linha, nomesPossiveis) {
+            for (let chave in linha) {
+                // Remove espaços, pontos e transforma em maiúsculo para comparar
+                const chaveLimpa = chave.replace(/[\s\.\_]/g, '').toUpperCase();
+                for (let nome of nomesPossiveis) {
+                    const nomeLimpo = nome.replace(/[\s\.\_]/g, '').toUpperCase();
+                    if (chaveLimpa === nomeLimpo) {
+                        return linha[chave];
+                    }
+                }
+            }
+            return "";
+        }
+
         function processarWorkbook(workbook) {
             let todosOsDados = [];
 
             workbook.SheetNames.forEach(nomeAba => {
                 const worksheet = workbook.Sheets[nomeAba];
+                // O defval: "" garante que células vazias não fiquem 'undefined'
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                 json.forEach(linha => {
                     linha['_AbaOrigem'] = nomeAba;
@@ -243,17 +259,7 @@
                 });
             });
 
-            // Remove duplicatas
-            const vistos = new Set();
-            dadosGlobais = todosOsDados.filter(linha => {
-                const area = (linha['Área'] || '').toString().trim().toUpperCase();
-                const local = (linha['Local'] || '').toString().trim().toUpperCase();
-                const tag = (linha['TAG'] || '').toString().trim().toUpperCase();
-                const chave = `${area}|${local}|${tag}`;
-                if (vistos.has(chave)) return false;
-                vistos.add(chave);
-                return true;
-            });
+            dadosGlobais = todosOsDados;
 
             preencherFiltros();
             atualizarContadores();
@@ -269,8 +275,10 @@
             const locais = new Set();
 
             dadosGlobais.forEach(linha => {
-                if (linha['Área']) areas.add(linha['Área']);
-                if (linha['Local']) locais.add(linha['Local']);
+                const area = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
+                const local = getValorColuna(linha, ['Local']);
+                if (area) areas.add(area);
+                if (local) locais.add(local);
             });
 
             selectArea.innerHTML = '<option value="">Todas as Áreas (Abas)</option>';
@@ -279,7 +287,6 @@
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // --- LÓGICA DE CONTAGEM BLINDADA (PARA BATER OS 39 REGISTROS) ---
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -287,34 +294,29 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
-                // 1. Limpa o ST-0 (remove espaços ocultos e força maiúsculo)
-                const st0 = (linha['St-0'] || '').toString().replace(/\s+/g, '').toUpperCase();
+                // Acha o ST-0 (Situação Atual)
+                let st0Raw = getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual']);
+                const st0 = String(st0Raw).replace(/\s+/g, '').toUpperCase();
                 
-                // 2. Limpa o N.SAP (remove espaços ocultos e verifica nulidades)
-                let sapRaw = (linha['N.SAP'] !== undefined) ? linha['N.SAP'] : linha['N. SAP'];
-                
-                // Converte para string, limpa, e checa se é realmente "vazio"
+                // Acha o N. SAP (tanto faz se tem espaço ou não)
+                let sapRaw = getValorColuna(linha, ['N. SAP', 'N.SAP', 'NSAP', 'SAP']);
                 let sapStr = (sapRaw !== null && sapRaw !== undefined) ? String(sapRaw).trim() : '';
-                const sapInvalido = sapStr === '' || sapStr === '0' || sapStr.toUpperCase() === 'NULL' || sapStr.toUpperCase() === 'UNDEFINED' || sapStr === '-';
                 
+                // Verifica se o SAP está realmente vazio
+                const isSapVazio = sapStr === '' || sapStr === '0' || sapStr.toUpperCase() === 'NULL' || sapStr.toUpperCase() === 'UNDEFINED' || sapStr === '-';
+
                 // Ignora Parados (P) ou vazios
                 if (st0 === 'P' || st0 === '') return;
 
                 const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
 
                 if (!isAlerta) {
-                    // Se não for Alerta, é Normal
                     totalNormal++;
                 } else {
-                    // Se for Alerta (A1, A2, A3, A4)
-                    if (!sapInvalido) {
-                        // Tem um SAP válido
+                    if (!isSapVazio) {
                         programados++;
                     } else {
-                        // Não tem SAP válido (é nulo/vazio)
                         naoProgramados++;
-                        
-                        // Conta os críticos A2 e A4 sem SAP
                         if (st0 === 'A2' || st0 === 'A4') {
                             criticosSemSap++;
                         }
@@ -322,18 +324,12 @@
                 }
             });
 
-            // Atualiza a tela
             document.getElementById('total-normal').innerText = totalNormal;
             document.getElementById('alertas-programados').innerText = programados;
             document.getElementById('alertas-nao-programados').innerText = naoProgramados;
             document.getElementById('criticos-sem-sap').innerText = criticosSemSap;
 
-            // Log para você conferir no console do navegador (F12) se os números bateram
-            console.log("--- RESULTADO DA CONTAGEM ---");
-            console.log("Total Normal:", totalNormal);
-            console.log("Programados:", programados);
-            console.log("Não Programados:", naoProgramados);
-            console.log("Críticos Sem SAP (A2/A4):", criticosSemSap);
+            console.log(`Resultado: Normal=${totalNormal} | Prog=${programados} | Não Prog=${naoProgramados} | Críticos(A2/A4 sem SAP)=${criticosSemSap}`);
         }
 
         function aplicarFiltros() {
@@ -343,25 +339,27 @@
             const busca = document.getElementById('filtro-busca').value.toLowerCase();
 
             dadosFiltrados = dadosGlobais.filter(linha => {
-                const matchArea = !area || linha['Área'] === area;
-                const matchLocal = !local || linha['Local'] === local;
+                const linhaArea = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
+                const linhaLocal = getValorColuna(linha, ['Local']);
+                
+                const matchArea = !area || linhaArea === area;
+                const matchLocal = !local || linhaLocal === local;
                 
                 let matchStatus = true;
                 if (status) {
-                    const st0 = (linha['St-0'] || '').toString().toUpperCase().trim();
+                    const st0 = String(getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual'])).replace(/\s+/g, '').toUpperCase();
                     if (status === 'N') {
                         matchStatus = (st0 === 'N' || st0 === '');
-                    } else if (['A1', 'A2', 'A3', 'A4'].includes(status)) {
+                    } else {
                         matchStatus = (st0 === status);
-                    } else if (status === 'P') {
-                        matchStatus = (st0 === 'P');
                     }
                 }
 
-                const matchBusca = !busca || 
-                    (linha['TAG'] && linha['TAG'].toString().toLowerCase().includes(busca)) ||
-                    (linha['Diagnósticos'] && linha['Diagnósticos'].toString().toLowerCase().includes(busca)) ||
-                    (linha['Local'] && linha['Local'].toString().toLowerCase().includes(busca));
+                const tagStr = String(getValorColuna(linha, ['TAG', 'Tag']) || '').toLowerCase();
+                const diagStr = String(getValorColuna(linha, ['Diagnósticos', 'Diagnosticos']) || '').toLowerCase();
+                const localStr = String(linhaLocal || '').toLowerCase();
+
+                const matchBusca = !busca || tagStr.includes(busca) || diagStr.includes(busca) || localStr.includes(busca);
 
                 return matchArea && matchLocal && matchStatus && matchBusca;
             });
@@ -370,12 +368,13 @@
         }
 
         function formatarBadge(valor) {
-            if (!valor || valor === 'N') return '<span class="badge badge-n">N</span>';
-            if (valor === 'P') return '<span class="badge badge-p">P</span>';
-            if (valor === 'A1') return '<span class="badge badge-a1">A1</span>'; 
-            if (valor === 'A2') return '<span class="badge badge-a2">A2</span>'; 
-            if (valor === 'A3') return '<span class="badge badge-a3">A3</span>'; 
-            if (valor === 'A4') return '<span class="badge badge-a4">A4</span>'; 
+            const valLimpo = String(valor).replace(/\s+/g, '').toUpperCase();
+            if (!valLimpo || valLimpo === 'N') return '<span class="badge badge-n">N</span>';
+            if (valLimpo === 'P') return '<span class="badge badge-p">P</span>';
+            if (valLimpo === 'A1') return '<span class="badge badge-a1">A1</span>'; 
+            if (valLimpo === 'A2') return '<span class="badge badge-a2">A2</span>'; 
+            if (valLimpo === 'A3') return '<span class="badge badge-a3">A3</span>'; 
+            if (valLimpo === 'A4') return '<span class="badge badge-a4">A4</span>'; 
             return `<span class="badge badge-a">${valor}</span>`;
         }
 
@@ -406,18 +405,34 @@
             dados.forEach(linha => {
                 const tr = document.createElement('tr');
                 
+                // Puxando os valores com a função anti-erro
+                const area = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
+                const local = getValorColuna(linha, ['Local']);
+                const tag = getValorColuna(linha, ['TAG', 'Tag']);
+                const st2 = getValorColuna(linha, ['St-2', 'ST-2', 'St2', 'ST2']);
+                const st1 = getValorColuna(linha, ['St-1', 'ST-1', 'St1', 'ST1']);
+                const st0 = getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual']);
+                const dataInsp = getValorColuna(linha, ['Dta St-0', 'Data Inspeção']);
+                const diag = getValorColuna(linha, ['Diagnósticos', 'Diagnosticos']);
+                const rec = getValorColuna(linha, ['Recomendações', 'Recomendacoes']);
+                const rel = getValorColuna(linha, ['N.Relatório', 'N. Relatório', 'NRelatorio', 'Relatório']);
+                const sap = getValorColuna(linha, ['N. SAP', 'N.SAP', 'NSAP', 'SAP']);
+
+                // Tratamento visual do SAP vazio
+                const sapExibir = (sap === '0' || sap === 'NULL' || sap === '') ? '—' : sap;
+
                 tr.innerHTML = `
-                    <td><strong>${linha['Área'] || '—'}</strong></td>
-                    <td>${linha['Local'] || '—'}</td>
-                    <td style="color: var(--azul-claro); font-weight: bold;">${linha['TAG'] || '—'}</td>
-                    <td>${formatarBadge(linha['St-2'])}</td>
-                    <td>${formatarBadge(linha['St-1'])}</td>
-                    <td>${formatarBadge(linha['St-0'])}</td>
-                    <td>${formatarData(linha['Dta St-0'] || linha['Data Inspeção'])}</td>
-                    <td>${linha['Diagnósticos'] || '—'}</td>
-                    <td>${linha['Recomendações'] || '—'}</td>
-                    <td>${linha['N.Relatório'] || '—'}</td>
-                    <td>${linha['N.SAP'] || '—'}</td>
+                    <td><strong>${area || '—'}</strong></td>
+                    <td>${local || '—'}</td>
+                    <td style="color: var(--azul-claro); font-weight: bold;">${tag || '—'}</td>
+                    <td>${formatarBadge(st2)}</td>
+                    <td>${formatarBadge(st1)}</td>
+                    <td>${formatarBadge(st0)}</td>
+                    <td>${formatarData(dataInsp)}</td>
+                    <td>${diag || '—'}</td>
+                    <td>${rec || '—'}</td>
+                    <td>${rel || '—'}</td>
+                    <td>${sapExibir}</td>
                 `;
                 tbody.appendChild(tr);
             });
