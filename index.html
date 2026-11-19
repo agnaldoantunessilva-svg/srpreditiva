@@ -74,14 +74,13 @@
         th { background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: bold; }
         td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
         
-        /* --- CORES DOS BADGES CORRIGIDAS --- */
         .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: white; }
         .badge-n { background: var(--verde); }
-        .badge-a1 { background: #f59e0b; } /* Amarelo */
-        .badge-a2 { background: #ef4444; } /* Vermelho */
-        .badge-a3 { background: #f97316; } /* Laranja */
-        .badge-a4 { background: var(--lilas) !important; } /* Lilás (Forçado com !important) */
-        .badge-p { background: #9ca3af; } /* Cinza */
+        .badge-a1 { background: #f59e0b; }
+        .badge-a2 { background: #ef4444; }
+        .badge-a3 { background: #f97316; }
+        .badge-a4 { background: var(--lilas) !important; }
+        .badge-p { background: #9ca3af; }
         
         #loading { display: none; text-align: center; padding: 20px; color: var(--azul-escuro); font-weight: bold; }
     </style>
@@ -93,7 +92,6 @@
         <div class="data" id="dataHora">Carregando...</div>
         <div class="header-btns">
             <button onclick="carregarExcelAuto()">📂 Atualizar Preditiva (Auto)</button>
-            <!-- Botão que abre a janela de seleção do Windows -->
             <button onclick="document.getElementById('input-file').click()">📅 Atualizar Cronograma (Manual)</button>
             <input type="file" id="input-file" accept=".xlsx, .xls" style="display: none;" onchange="lerArquivoLocal(this)">
         </div>
@@ -194,7 +192,6 @@
             document.getElementById('tab-' + aba).classList.add('active');
         }
 
-        // --- FUNÇÃO AUTO (GITHUB) ---
         function carregarExcelAuto() {
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
@@ -216,7 +213,6 @@
                 });
         }
 
-        // --- FUNÇÃO MANUAL (SELECIONAR ARQUIVO DO PC) ---
         function lerArquivoLocal(input) {
             const file = input.files[0];
             if (!file) return;
@@ -247,7 +243,6 @@
                 });
             });
 
-            // Remove duplicatas
             const vistos = new Set();
             dadosGlobais = todosOsDados.filter(linha => {
                 const area = (linha['Área'] || '').toString().trim().toUpperCase();
@@ -283,7 +278,7 @@
             locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
         }
 
-        // --- LÓGICA DE CONTAGEM BLINDADA ---
+        // --- LÓGICA DE CONTAGEM CORRIGIDA CONFORME SUA SOLICITAÇÃO ---
         function atualizarContadores() {
             let totalNormal = 0;
             let programados = 0;
@@ -291,32 +286,29 @@
             let criticosSemSap = 0;
 
             dadosGlobais.forEach(linha => {
+                // Força a leitura correta da coluna ST-0 (Situação Atual)
                 const st0 = (linha['St-0'] || '').toString().trim().toUpperCase();
                 
-                // Pega o valor cru do SAP e do Relatório
-                const relatorioRaw = linha['N.Relatório'] || linha['N. Relatório'] || '';
-                const sapRaw = linha['N.SAP'] || linha['N. SAP'] || '';
-                
-                // Limpa espaços e converte para string
-                const temRelatorio = String(relatorioRaw).trim().length > 0;
-                const temSap = String(sapRaw).trim().length > 0;
+                // Limpa o campo N.SAP (tanto "N.SAP" quanto "N. SAP")
+                let sapRaw = linha['N.SAP'] !== undefined ? linha['N.SAP'] : linha['N. SAP'];
+                const sapStr = (sapRaw !== null && sapRaw !== undefined) ? String(sapRaw).trim().toUpperCase() : '';
+                const temSap = (sapStr !== '' && sapStr !== 'NULL' && sapStr !== 'UNDEFINED');
 
-                // Ignora Parados
-                if (st0 === 'P') return; 
+                // Ignora Parados (P) ou vazios para contagem de alarmes
+                if (st0 === 'P' || st0 === '') return;
 
                 const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
 
-                // Normal
-                if (!isAlerta && !temRelatorio) {
+                if (!isAlerta) {
+                    // É Normal (N ou outro valor)
                     totalNormal++;
-                }
-
-                // Alarmados
-                if (isAlerta && temRelatorio) {
+                } else {
+                    // É Alerta (A1, A2, A3, A4)
                     if (temSap) {
                         programados++;
                     } else {
                         naoProgramados++;
+                        // Se for A2 ou A4 e NÃO tem SAP, é Crítico
                         if (st0 === 'A2' || st0 === 'A4') {
                             criticosSemSap++;
                         }
@@ -324,6 +316,7 @@
                 }
             });
 
+            // Atualiza os números na tela
             document.getElementById('total-normal').innerText = totalNormal;
             document.getElementById('alertas-programados').innerText = programados;
             document.getElementById('alertas-nao-programados').innerText = naoProgramados;
@@ -369,7 +362,7 @@
             if (valor === 'A1') return '<span class="badge badge-a1">A1</span>'; 
             if (valor === 'A2') return '<span class="badge badge-a2">A2</span>'; 
             if (valor === 'A3') return '<span class="badge badge-a3">A3</span>'; 
-            if (valor === 'A4') return '<span class="badge badge-a4">A4</span>'; // Lilás
+            if (valor === 'A4') return '<span class="badge badge-a4">A4</span>'; 
             return `<span class="badge badge-a">${valor}</span>`;
         }
 
