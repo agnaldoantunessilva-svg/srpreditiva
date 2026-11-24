@@ -21,6 +21,21 @@
   }
   .wrap { max-width: 1200px; margin: 0 auto; }
 
+  /* Botões de Navegação */
+  .nav-buttons {
+    display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .nav-buttons a {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--card2); color: var(--txt); text-decoration: none;
+    padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem;
+    border: 1px solid var(--ring); transition: all 0.2s;
+    box-shadow: 0 4px 10px -5px #000a;
+  }
+  .nav-buttons a:hover { background: var(--card); border-color: var(--blue); transform: translateY(-2px); }
+  .nav-buttons a.crono { border-left: 4px solid var(--amber); }
+  .nav-buttons a.lista { border-left: 4px solid var(--blue); }
+
   /* Status de Atualização */
   .status-box {
     background: var(--card); border: 1px solid var(--ring); border-radius: 12px;
@@ -96,6 +111,12 @@
 <body>
 <div class="wrap">
   
+  <!-- BOTÕES DE ACESSO RÁPIDO -->
+  <div class="nav-buttons">
+    <a href="cronograma.html" class="crono">📅 Acessar Cronograma</a>
+    <a href="lista.html" class="lista">📋 Acessar Lista Geral</a>
+  </div>
+
   <div class="status-box">
     <div class="msg loading" id="statusMsg">
       <span>⏳</span> Carregando dados da planilha...
@@ -162,9 +183,6 @@
     grid: document.getElementById('totaisGrid')
   };
 
-  // ==========================================
-  // LÓGICA DE LEITURA (Arquivo LOCAL)
-  // ==========================================
   function processWorkbook(data) {
     const workbook = XLSX.read(data, { type: 'array' });
     const firstSheetName = workbook.SheetNames[0];
@@ -239,15 +257,11 @@
     }
   }
 
-  // ==========================================
-  // BUSCA O ARQUIVO LOCAL (MESMA PASTA)
-  // ==========================================
   async function fetchData() {
     els.statusMsg.className = "msg loading";
     els.statusMsg.innerHTML = "<span>⏳</span> Lendo planilha local...";
 
     try {
-      // Busca o arquivo na mesma pasta do index.html
       const response = await fetch('./Pasta1.xlsx');
       if (!response.ok) throw new Error("Arquivo não encontrado.");
       
