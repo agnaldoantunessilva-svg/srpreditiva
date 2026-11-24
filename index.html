@@ -1,442 +1,260 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Preditiva — Vibrações</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --azul-escuro: #1e3a8a;
-            --azul-claro: #3b82f6;
-            --verde: #10b981;
-            --azul-alerta: #3b82f6;
-            --cinza-alerta: #6b7280;
-            --vermelho: #ef4444;
-            --fundo: #f3f4f6;
-            --lilas: #a855f7;
-        }
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--fundo); margin: 0; padding: 20px; }
-        
-        .header {
-            background-color: var(--azul-escuro);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .header h1 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
-        .header .logo { background: white; color: var(--azul-escuro); padding: 5px 10px; border-radius: 5px; font-weight: bold; }
-        .header .data { font-size: 0.9rem; opacity: 0.8; }
-        .header-btns button {
-            background: white; color: var(--azul-escuro); border: none; padding: 8px 15px;
-            border-radius: 5px; font-weight: bold; cursor: pointer; margin-left: 10px;
-            display: inline-flex; align-items: center; gap: 5px;
-        }
-        .header-btns button:hover { background: #e5e7eb; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Vibrações — Dashboard (GERAL)</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --card2: #273449;
+    --txt: #e2e8f0; --muted: #94a3b8;
+    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --ring: rgba(255, 255, 255, 0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1e3a8a33, transparent), var(--bg);
+    color: var(--txt); min-height: 100vh; padding: 32px 20px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  
+  /* Caixa de input para colar os dados */
+  .input-area {
+    background: var(--card); border: 1px solid var(--ring); border-radius: 12px;
+    padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 20px -10px #000a;
+  }
+  .input-area h2 { font-size: 1rem; color: var(--blue); margin-bottom: 12px; }
+  .input-area textarea {
+    width: 100%; height: 120px; background: #0b1222; color: var(--txt);
+    border: 1px solid var(--ring); border-radius: 8px; padding: 12px;
+    font-family: monospace; font-size: 0.85rem; resize: vertical;
+  }
+  .input-area p { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
 
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .nav-tabs button {
-            padding: 10px 20px; border: 1px solid #d1d5db; background: white;
-            border-radius: 5px; cursor: pointer; font-weight: 500; color: #374151;
-        }
-        .nav-tabs button.active { background: var(--azul-escuro); color: white; border-color: var(--azul-escuro); }
+  header { margin-bottom: 28px; }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; }
+  header p { color: var(--muted); font-size: .9rem; margin-top: 6px; }
+  .badge {
+    display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: #93c5fd; background: #1e3a8a55;
+    border: 1px solid #3b82f655; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px;
+  }
 
-        .cards-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .card {
-            background: white; padding: 20px; border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;
-            border-left: 5px solid transparent;
-        }
-        .card.total { border-left-color: var(--verde); }
-        .card.programados { border-left-color: var(--azul-alerta); }
-        .card.nao-programados { border-left-color: var(--cinza-alerta); }
-        .card.criticos { border-left-color: var(--vermelho); }
-        .card h2 { margin: 0; font-size: 2.5rem; }
-        .card.total h2 { color: var(--verde); }
-        .card.programados h2 { color: var(--azul-alerta); }
-        .card.nao-programados h2 { color: var(--cinza-alerta); }
-        .card.criticos h2 { color: var(--vermelho); }
-        .card p { margin: 5px 0 0; font-size: 0.85rem; font-weight: bold; color: #4b5563; }
-        .card span { font-size: 0.75rem; color: #9ca3af; display: block; margin-top: 5px; }
+  /* Cartões Principais */
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    position: relative; background: linear-gradient(160deg, var(--card), var(--card2));
+    border: 1px solid var(--ring); border-radius: 16px; padding: 22px 22px 20px;
+    box-shadow: 0 10px 30px -12px #000a; overflow: hidden;
+  }
+  .card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--accent); }
+  .card .label { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card .value { font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+  .card .sub { font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  .card .sub b { color: var(--txt); }
 
-        .filters { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; }
-        .filters select, .filters input {
-            padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 5px; flex: 1; outline: none;
-        }
+  .c1 { --accent: var(--blue); display: flex; flex-direction: column; justify-content: center; }
+  .c1 .label { margin-bottom: 8px; }
+  .c2 { --accent: var(--green); }
+  .c3 { --accent: var(--amber); }
+  .c4 { --accent: var(--red); }
+  
+  /* Animação do Piscante */
+  .c4 .value { animation: blink 1.1s ease-in-out infinite; }
+  .c4 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 #ef444488; animation: pulse 1.3s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.35} }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 #ef444488} 70%{box-shadow:0 0 0 12px #ef444400} 100%{box-shadow:0 0 0 0 #ef444400} }
 
-        .table-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
-        th { background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; color: #374151; font-weight: bold; }
-        td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563; }
-        
-        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; color: white; }
-        .badge-n { background: var(--verde); }
-        .badge-a1 { background: #f59e0b; }
-        .badge-a2 { background: #ef4444; }
-        .badge-a3 { background: #f97316; }
-        .badge-a4 { background: var(--lilas) !important; }
-        .badge-p { background: #9ca3af; }
-        
-        #loading { display: none; text-align: center; padding: 20px; color: var(--azul-escuro); font-weight: bold; }
-    </style>
+  /* Tabela de contagem separada */
+  .totais-box { margin-top: 24px; background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 20px; }
+  .totais-box h3 { font-size: 1rem; margin-bottom: 16px; color: var(--txt); }
+  .totais-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  
+  .total-item { 
+    background: var(--card2); padding: 16px 12px; border-radius: 8px; 
+    text-align: center; border: 1px solid var(--ring); 
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .total-item span.k { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 6px; }
+  .total-item strong.v { font-size: 1.6rem; color: var(--txt); line-height: 1; margin-bottom: 8px; }
+  
+  /* Subtextos informativos */
+  .total-item .details { font-size: 0.65rem; color: var(--muted); line-height: 1.3; }
+  .total-item .details b { color: #cbd5e1; font-weight: 600; }
+
+  .legend { margin-top: 24px; background: #0b1222cc; border: 1px solid var(--ring); border-radius: 12px; padding: 16px 18px; font-size: .82rem; color: var(--muted); }
+  .legend b { color: var(--txt); }
+  .legend ul { margin: 8px 0 0 18px; line-height: 1.7; }
+</style>
 </head>
 <body>
+<div class="wrap">
+  
+  <div class="input-area">
+    <h2>📋 Cole os dados da aba GERAL aqui</h2>
+    <textarea id="rawData" placeholder="Cole os dados copiados do Excel (colunas A a M). O script vai processar automaticamente."></textarea>
+    <p>Dica: Selecione todas as células no Excel (Ctrl+A) e copie (Ctrl+C). O script ignora o cabeçalho automaticamente.</p>
+  </div>
 
-    <div class="header">
-        <h1><span class="logo">SR</span> Preditiva SR | Montenegro RS</h1>
-        <div class="data" id="dataHora">Carregando...</div>
-        <div class="header-btns">
-            <button onclick="carregarExcelAuto()">📂 Atualizar Preditiva (Auto)</button>
-            <button onclick="document.getElementById('input-file').click()">📅 Atualizar Cronograma (Manual)</button>
-            <input type="file" id="input-file" accept=".xlsx, .xls" style="display: none;" onchange="lerArquivoLocal(this)">
-        </div>
+  <header>
+    <span class="badge">Termografia & Vibração · St-0 · ABA GERAL</span>
+    <h1>Análise de Vibrações — Dashboard de Alertas</h1>
+    <p>Os números são atualizados automaticamente conforme você cola os dados.</p>
+  </header>
+
+  <section class="grid">
+    <!-- Cartão 1 sem o subtítulo -->
+    <div class="card c1">
+      <div class="label">📋 Total de Registros (St-0)</div>
+      <div class="value" id="v1">—</div>
     </div>
 
-    <div class="nav-tabs">
-        <button onclick="mudarAba('ANUAL')" id="tab-ANUAL" class="active">📅 Cronograma Anual</button>
-        <button onclick="mudarAba('VIBRACOES')" id="tab-VIBRACOES">📋 Lista de Vibrações</button>
+    <div class="card c2">
+      <div class="label">✅ Alertas Programados</div>
+      <div class="value" id="v2">—</div>
+      <div class="sub"><b>A1 e A3</b> com N. SAP preenchido</div>
     </div>
 
-    <div id="loading">Lendo o arquivo Excel, aguarde...</div>
-
-    <div id="conteudo-principal">
-        <h2 style="color: var(--azul-escuro); margin-bottom: 15px;">Análise de Vibrações</h2>
-        
-        <div class="cards-container">
-            <div class="card total">
-                <h2 id="total-normal">0</h2>
-                <p>TOTAL NORMAL</p>
-                <span>Equipamentos em condição normal</span>
-            </div>
-            <div class="card programados">
-                <h2 id="alertas-programados">0</h2>
-                <p>ALERTAS PROGRAMADOS</p>
-                <span>A1/A2/A3/A4 com SAP</span>
-            </div>
-            <div class="card nao-programados">
-                <h2 id="alertas-nao-programados">0</h2>
-                <p>ALERTAS NÃO PROGRAMADOS</p>
-                <span>A1/A2/A3/A4 sem SAP</span>
-            </div>
-            <div class="card criticos">
-                <h2 id="criticos-sem-sap">0</h2>
-                <p>CRÍTICOS SEM SAP</p>
-                <span>A2/A4 sem programação</span>
-            </div>
-        </div>
-
-        <div class="filters">
-            <select id="filtro-area"><option value="">Todas as Áreas (Abas)</option></select>
-            <select id="filtro-local"><option value="">Todos os Locais</option></select>
-            <select id="filtro-status">
-                <option value="">Todos os Status</option>
-                <option value="N">Normal (N)</option>
-                <option value="A1">Alerta A1</option>
-                <option value="A2">Alerta A2</option>
-                <option value="A3">Alerta A3</option>
-                <option value="A4">Alerta A4</option>
-                <option value="P">Parado (P)</option>
-            </select>
-            <input type="text" id="filtro-busca" placeholder="🔍 Buscar TAG, diagnóstico...">
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ÁREA (ABA)</th>
-                        <th>LOCAL</th>
-                        <th>TAG</th>
-                        <th>ST-2</th>
-                        <th>ST-1</th>
-                        <th>ST-0</th>
-                        <th>DATA INSPEÇÃO</th>
-                        <th>DIAGNÓSTICO</th>
-                        <th>RECOMENDAÇÕES</th>
-                        <th>N. RELATÓRIO</th>
-                        <th>N. SAP</th>
-                    </tr>
-                </thead>
-                <tbody id="corpo-tabela"></tbody>
-            </table>
-        </div>
+    <div class="card c3">
+      <div class="label">⚠️ Alertas Não Programados</div>
+      <div class="value" id="v3">—</div>
+      <div class="sub"><b>A1 e A3</b> sem N. SAP</div>
     </div>
 
-    <script>
-        let dadosGlobais = []; 
-        let dadosFiltrados = []; 
+    <div class="card c4">
+      <div class="label"><span class="dot"></span> CRÍTICOS SEM SAP</div>
+      <div class="value" id="v4">—</div>
+      <div class="sub"><b>A2 (mecânico)</b> ou <b>A4 (elétrico)</b> sem SAP</div>
+    </div>
+  </section>
 
-        document.addEventListener('DOMContentLoaded', () => {
-            atualizarDataHora();
-            setInterval(atualizarDataHora, 1000);
-            carregarExcelAuto(); 
-            
-            document.getElementById('filtro-area').addEventListener('change', aplicarFiltros);
-            document.getElementById('filtro-local').addEventListener('change', aplicarFiltros);
-            document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
-            document.getElementById('filtro-busca').addEventListener('input', aplicarFiltros);
-        });
+  <div class="totais-box">
+    <h3>Contagem Separada (Categorias Válidas)</h3>
+    <div class="totais-grid" id="totaisGrid">
+      <!-- Preenchido via JS -->
+    </div>
+  </div>
 
-        function atualizarDataHora() {
-            const agora = new Date();
-            document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+  <div class="legend">
+    <b>Regras aplicadas:</b>
+    <ul>
+      <li><b>Total St-0:</b> Soma N, A1, A2, A3 e A4. (M, NM e P são ignorados).</li>
+      <li><b>Programados:</b> Apenas A1 e A3 com N. SAP preenchido.</li>
+      <li><b>Não Programados:</b> Apenas A1 e A3 com N. SAP vazio.</li>
+      <li><b>Críticos Sem SAP:</b> Apenas A2 (Mecânico Crítico) ou A4 (Elétrico Importante) sem SAP.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const inputArea = document.getElementById('rawData');
+  const els = {
+    v1: document.getElementById('v1'),
+    v2: document.getElementById('v2'),
+    v3: document.getElementById('v3'),
+    v4: document.getElementById('v4'),
+    grid: document.getElementById('totaisGrid')
+  };
+
+  const COL_ST0 = 7;
+  const COL_SAP = 12;
+
+  function processData() {
+    const raw = inputArea.value;
+    if (!raw.trim()) return resetUI();
+
+    const lines = raw.split(/\r?\n/).filter(line => line.trim() !== '');
+    
+    // Contadores para os cartões principais
+    let programados = 0;
+    let naoProgramados = 0;
+    let criticos = 0;
+
+    // Objeto para armazenar os detalhes de cada categoria
+    let stats = {
+      N:  { total: 0, comSap: 0, semSap: 0 },
+      A1: { total: 0, comSap: 0, semSap: 0 },
+      A2: { total: 0, comSap: 0, semSap: 0 },
+      A3: { total: 0, comSap: 0, semSap: 0 },
+      A4: { total: 0, comSap: 0, semSap: 0 }
+    };
+
+    let startIndex = lines[0].includes('St-0') || lines[0].includes('Área') ? 1 : 0;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const cols = lines[i].split('\t');
+      if (cols.length <= COL_ST0) continue;
+
+      const st0 = (cols[COL_ST0] || '').trim().toUpperCase();
+      const sap = (cols[COL_SAP] || '').trim();
+
+      if (stats[st0] !== undefined) {
+        stats[st0].total++;
+        if (sap !== '') {
+          stats[st0].comSap++;
+        } else {
+          stats[st0].semSap++;
         }
+      }
 
-        function mudarAba(aba) {
-            document.querySelectorAll('.nav-tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tab-' + aba).classList.add('active');
-        }
+      // Regras dos cartões superiores
+      if (st0 === 'A1' || st0 === 'A3') {
+        if (sap !== '') programados++;
+        else naoProgramados++;
+      }
 
-        function carregarExcelAuto() {
-            const loading = document.getElementById('loading');
-            loading.style.display = 'block';
+      if ((st0 === 'A2' || st0 === 'A4') && sap === '') {
+        criticos++;
+      }
+    }
 
-            const urlArquivo = 'Análise de Vibrações.xlsx?v=' + new Date().getTime();
+    const totalGeral = stats.N.total + stats.A1.total + stats.A2.total + stats.A3.total + stats.A4.total;
 
-            fetch(urlArquivo)
-                .then(response => {
-                    if (!response.ok) throw new Error("Arquivo não encontrado.");
-                    return response.arrayBuffer();
-                })
-                .then(arrayBuffer => {
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-                    processarWorkbook(workbook);
-                })
-                .catch(error => {
-                    console.warn("Erro Auto:", error);
-                    loading.style.display = 'none';
-                });
-        }
+    // Renderiza os cartões superiores
+    els.v1.textContent = totalGeral;
+    els.v2.textContent = programados;
+    els.v3.textContent = naoProgramados;
+    els.v4.textContent = criticos;
 
-        function lerArquivoLocal(input) {
-            const file = input.files[0];
-            if (!file) return;
+    // Renderiza a grade inferior com os subtextos
+    els.grid.innerHTML = '';
+    for (const [key, data] of Object.entries(stats)) {
+      const div = document.createElement('div');
+      div.className = 'total-item';
+      
+      // Monta o HTML interno de forma condicional
+      let detailsHtml = '';
+      if (key === 'N') {
+         // Para "N", apenas mostramos que não se aplica a programação
+         detailsHtml = `<div class="details">Sem alerta</div>`;
+      } else {
+         detailsHtml = `
+           <div class="details">
+             <b>${data.comSap}</b> Programados<br>
+             <b>${data.semSap}</b> Não Programados
+           </div>
+         `;
+      }
 
-            const loading = document.getElementById('loading');
-            loading.style.display = 'block';
+      div.innerHTML = `
+        <span class="k">${key}</span>
+        <strong class="v">${data.total}</strong>
+        ${detailsHtml}
+      `;
+      els.grid.appendChild(div);
+    }
+  }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                processarWorkbook(workbook);
-                alert("Cronograma importado com sucesso do seu computador!");
-                input.value = ''; 
-            };
-            reader.readAsArrayBuffer(file);
-        }
+  function resetUI() {
+    els.v1.textContent = '—';
+    els.v2.textContent = '—';
+    els.v3.textContent = '—';
+    els.v4.textContent = '—';
+    els.grid.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;grid-column:1/-1;">Aguardando dados...</div>';
+  }
 
-        // FUNÇÃO PARA ACHAR A COLUNA CORRETA IGNORANDO ESPAÇOS E PONTOS
-        function getValorColuna(linha, nomesPossiveis) {
-            for (let chave in linha) {
-                // Remove espaços, pontos e transforma em maiúsculo para comparar
-                const chaveLimpa = chave.replace(/[\s\.\_]/g, '').toUpperCase();
-                for (let nome of nomesPossiveis) {
-                    const nomeLimpo = nome.replace(/[\s\.\_]/g, '').toUpperCase();
-                    if (chaveLimpa === nomeLimpo) {
-                        return linha[chave];
-                    }
-                }
-            }
-            return "";
-        }
-
-        function processarWorkbook(workbook) {
-            let todosOsDados = [];
-
-            workbook.SheetNames.forEach(nomeAba => {
-                const worksheet = workbook.Sheets[nomeAba];
-                // O defval: "" garante que células vazias não fiquem 'undefined'
-                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                json.forEach(linha => {
-                    linha['_AbaOrigem'] = nomeAba;
-                    todosOsDados.push(linha);
-                });
-            });
-
-            dadosGlobais = todosOsDados;
-
-            preencherFiltros();
-            atualizarContadores();
-            dadosFiltrados = [...dadosGlobais];
-            renderizarTabela(dadosFiltrados);
-            document.getElementById('loading').style.display = 'none';
-        }
-
-        function preencherFiltros() {
-            const selectArea = document.getElementById('filtro-area');
-            const selectLocal = document.getElementById('filtro-local');
-            const areas = new Set();
-            const locais = new Set();
-
-            dadosGlobais.forEach(linha => {
-                const area = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
-                const local = getValorColuna(linha, ['Local']);
-                if (area) areas.add(area);
-                if (local) locais.add(local);
-            });
-
-            selectArea.innerHTML = '<option value="">Todas as Áreas (Abas)</option>';
-            areas.forEach(area => selectArea.innerHTML += `<option value="${area}">${area}</option>`);
-            selectLocal.innerHTML = '<option value="">Todos os Locais</option>';
-            locais.forEach(local => selectLocal.innerHTML += `<option value="${local}">${local}</option>`);
-        }
-
-        function atualizarContadores() {
-            let totalNormal = 0;
-            let programados = 0;
-            let naoProgramados = 0;
-            let criticosSemSap = 0;
-
-            dadosGlobais.forEach(linha => {
-                // Acha o ST-0 (Situação Atual)
-                let st0Raw = getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual']);
-                const st0 = String(st0Raw).replace(/\s+/g, '').toUpperCase();
-                
-                // Acha o N. SAP (tanto faz se tem espaço ou não)
-                let sapRaw = getValorColuna(linha, ['N. SAP', 'N.SAP', 'NSAP', 'SAP']);
-                let sapStr = (sapRaw !== null && sapRaw !== undefined) ? String(sapRaw).trim() : '';
-                
-                // Verifica se o SAP está realmente vazio
-                const isSapVazio = sapStr === '' || sapStr === '0' || sapStr.toUpperCase() === 'NULL' || sapStr.toUpperCase() === 'UNDEFINED' || sapStr === '-';
-
-                // Ignora Parados (P) ou vazios
-                if (st0 === 'P' || st0 === '') return;
-
-                const isAlerta = ['A1', 'A2', 'A3', 'A4'].includes(st0);
-
-                if (!isAlerta) {
-                    totalNormal++;
-                } else {
-                    if (!isSapVazio) {
-                        programados++;
-                    } else {
-                        naoProgramados++;
-                        if (st0 === 'A2' || st0 === 'A4') {
-                            criticosSemSap++;
-                        }
-                    }
-                }
-            });
-
-            document.getElementById('total-normal').innerText = totalNormal;
-            document.getElementById('alertas-programados').innerText = programados;
-            document.getElementById('alertas-nao-programados').innerText = naoProgramados;
-            document.getElementById('criticos-sem-sap').innerText = criticosSemSap;
-
-            console.log(`Resultado: Normal=${totalNormal} | Prog=${programados} | Não Prog=${naoProgramados} | Críticos(A2/A4 sem SAP)=${criticosSemSap}`);
-        }
-
-        function aplicarFiltros() {
-            const area = document.getElementById('filtro-area').value;
-            const local = document.getElementById('filtro-local').value;
-            const status = document.getElementById('filtro-status').value;
-            const busca = document.getElementById('filtro-busca').value.toLowerCase();
-
-            dadosFiltrados = dadosGlobais.filter(linha => {
-                const linhaArea = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
-                const linhaLocal = getValorColuna(linha, ['Local']);
-                
-                const matchArea = !area || linhaArea === area;
-                const matchLocal = !local || linhaLocal === local;
-                
-                let matchStatus = true;
-                if (status) {
-                    const st0 = String(getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual'])).replace(/\s+/g, '').toUpperCase();
-                    if (status === 'N') {
-                        matchStatus = (st0 === 'N' || st0 === '');
-                    } else {
-                        matchStatus = (st0 === status);
-                    }
-                }
-
-                const tagStr = String(getValorColuna(linha, ['TAG', 'Tag']) || '').toLowerCase();
-                const diagStr = String(getValorColuna(linha, ['Diagnósticos', 'Diagnosticos']) || '').toLowerCase();
-                const localStr = String(linhaLocal || '').toLowerCase();
-
-                const matchBusca = !busca || tagStr.includes(busca) || diagStr.includes(busca) || localStr.includes(busca);
-
-                return matchArea && matchLocal && matchStatus && matchBusca;
-            });
-
-            renderizarTabela(dadosFiltrados);
-        }
-
-        function formatarBadge(valor) {
-            const valLimpo = String(valor).replace(/\s+/g, '').toUpperCase();
-            if (!valLimpo || valLimpo === 'N') return '<span class="badge badge-n">N</span>';
-            if (valLimpo === 'P') return '<span class="badge badge-p">P</span>';
-            if (valLimpo === 'A1') return '<span class="badge badge-a1">A1</span>'; 
-            if (valLimpo === 'A2') return '<span class="badge badge-a2">A2</span>'; 
-            if (valLimpo === 'A3') return '<span class="badge badge-a3">A3</span>'; 
-            if (valLimpo === 'A4') return '<span class="badge badge-a4">A4</span>'; 
-            return `<span class="badge badge-a">${valor}</span>`;
-        }
-
-        function formatarData(data) {
-            if (!data) return '—';
-            if (typeof data === 'number') {
-                const dateObj = new Date((data - 25569) * 86400 * 1000);
-                return dateObj.toLocaleDateString('pt-BR');
-            }
-            try {
-                const d = new Date(data);
-                if (isNaN(d.getTime())) return data;
-                return d.toLocaleDateString('pt-BR');
-            } catch (e) {
-                return data;
-            }
-        }
-
-        function renderizarTabela(dados) {
-            const tbody = document.getElementById('corpo-tabela');
-            tbody.innerHTML = ''; 
-
-            if (dados.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px;">Nenhum registro encontrado.</td></tr>';
-                return;
-            }
-
-            dados.forEach(linha => {
-                const tr = document.createElement('tr');
-                
-                // Puxando os valores com a função anti-erro
-                const area = getValorColuna(linha, ['Área', 'Area', 'Area (Aba)']) || linha['_AbaOrigem'];
-                const local = getValorColuna(linha, ['Local']);
-                const tag = getValorColuna(linha, ['TAG', 'Tag']);
-                const st2 = getValorColuna(linha, ['St-2', 'ST-2', 'St2', 'ST2']);
-                const st1 = getValorColuna(linha, ['St-1', 'ST-1', 'St1', 'ST1']);
-                const st0 = getValorColuna(linha, ['St-0', 'ST-0', 'St0', 'ST0', 'Situação Atual']);
-                const dataInsp = getValorColuna(linha, ['Dta St-0', 'Data Inspeção']);
-                const diag = getValorColuna(linha, ['Diagnósticos', 'Diagnosticos']);
-                const rec = getValorColuna(linha, ['Recomendações', 'Recomendacoes']);
-                const rel = getValorColuna(linha, ['N.Relatório', 'N. Relatório', 'NRelatorio', 'Relatório']);
-                const sap = getValorColuna(linha, ['N. SAP', 'N.SAP', 'NSAP', 'SAP']);
-
-                // Tratamento visual do SAP vazio
-                const sapExibir = (sap === '0' || sap === 'NULL' || sap === '') ? '—' : sap;
-
-                tr.innerHTML = `
-                    <td><strong>${area || '—'}</strong></td>
-                    <td>${local || '—'}</td>
-                    <td style="color: var(--azul-claro); font-weight: bold;">${tag || '—'}</td>
-                    <td>${formatarBadge(st2)}</td>
-                    <td>${formatarBadge(st1)}</td>
-                    <td>${formatarBadge(st0)}</td>
-                    <td>${formatarData(dataInsp)}</td>
-                    <td>${diag || '—'}</td>
-                    <td>${rec || '—'}</td>
-                    <td>${rel || '—'}</td>
-                    <td>${sapExibir}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-    </script>
+  inputArea.addEventListener('input', processData);
+</script>
 </body>
 </html>
