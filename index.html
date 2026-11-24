@@ -98,15 +98,15 @@
   
   <div class="status-box">
     <div class="msg loading" id="statusMsg">
-      <span>⏳</span> Carregando dados do GitHub...
+      <span>⏳</span> Carregando dados da planilha...
     </div>
-    <button onclick="fetchData(true)">🔄 Atualizar Agora</button>
+    <button onclick="fetchData()">🔄 Atualizar Agora</button>
   </div>
 
   <header>
     <span class="badge">Termografia & Vibração · St-0 · ABA GERAL</span>
     <h1>Análise de Vibrações — Dashboard de Alertas</h1>
-    <p>Os números são atualizados automaticamente a partir do arquivo <b>Pasta1.xlsx</b> no repositório.</p>
+    <p>Os números são atualizados automaticamente a partir do arquivo <b>Pasta1.xlsx</b>.</p>
   </header>
 
   <section class="grid">
@@ -153,20 +153,6 @@
 </div>
 
 <script>
-  // ==========================================
-  // CONFIGURAÇÃO DO GITHUB
-  // ==========================================
-  const GITHUB_USER = "agnaldoantunessilva-svg";
-  const GITHUB_REPO = "srpreditiva";
-  const BRANCH = "principal"; // <-- CORRIGIDO AQUI
-  const FILE_NAME = "Pasta1.xlsx";
-
-  const RAW_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${FILE_NAME}`;
-  const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/commits?path=${FILE_NAME}&branch=${BRANCH}&per_page=1`;
-
-  let lastCommitSha = "";
-  let checkInterval = null;
-
   const els = {
     statusMsg: document.getElementById('statusMsg'),
     v1: document.getElementById('v1'),
@@ -177,16 +163,12 @@
   };
 
   // ==========================================
-  // LÓGICA DE LEITURA E PROCESSAMENTO DO EXCEL
+  // LÓGICA DE LEITURA (Arquivo LOCAL)
   // ==========================================
   function processWorkbook(data) {
     const workbook = XLSX.read(data, { type: 'array' });
-    
-    // Pega a primeira aba (GERAL)
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    
-    // Converte para JSON (array de arrays)
     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
     let programados = 0;
@@ -201,7 +183,6 @@
       A4: { total: 0, comSap: 0, semSap: 0 }
     };
 
-    // Encontra os índices das colunas baseado no cabeçalho
     let colSt0 = 7; 
     let colSap = 12; 
 
@@ -213,7 +194,6 @@
       if (idxSap !== -1) colSap = idxSap;
     }
 
-    // Itera sobre as linhas (pula o cabeçalho)
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length === 0) continue;
@@ -223,14 +203,10 @@
 
       if (stats[st0] !== undefined) {
         stats[st0].total++;
-        if (sap !== '') {
-          stats[st0].comSap++;
-        } else {
-          stats[st0].semSap++;
-        }
+        if (sap !== '') stats[st0].comSap++;
+        else stats[st0].semSap++;
       }
 
-      // Regras
       if (st0 === 'A1' || st0 === 'A3') {
         if (sap !== '') programados++;
         else naoProgramados++;
@@ -243,7 +219,6 @@
 
     const totalGeral = stats.N.total + stats.A1.total + stats.A2.total + stats.A3.total + stats.A4.total;
 
-    // Renderiza
     els.v1.textContent = totalGeral;
     els.v2.textContent = programados;
     els.v3.textContent = naoProgramados;
@@ -253,87 +228,43 @@
     for (const [key, dataObj] of Object.entries(stats)) {
       const div = document.createElement('div');
       div.className = 'total-item';
-      
       let detailsHtml = '';
       if (key === 'N') {
          detailsHtml = `<div class="details">Sem alerta</div>`;
       } else {
-         detailsHtml = `
-           <div class="details">
-             <b>${dataObj.comSap}</b> Programados<br>
-             <b>${dataObj.semSap}</b> Não Programados
-           </div>
-         `;
+         detailsHtml = `<div class="details"><b>${dataObj.comSap}</b> Programados<br><b>${dataObj.semSap}</b> Não Programados</div>`;
       }
-
-      div.innerHTML = `
-        <span class="k">${key}</span>
-        <strong class="v">${dataObj.total}</strong>
-        ${detailsHtml}
-      `;
+      div.innerHTML = `<span class="k">${key}</span><strong class="v">${dataObj.total}</strong>${detailsHtml}`;
       els.grid.appendChild(div);
     }
   }
 
   // ==========================================
-  // COMUNICAÇÃO COM O GITHUB
+  // BUSCA O ARQUIVO LOCAL (MESMA PASTA)
   // ==========================================
-  async function fetchData(force = false) {
+  async function fetchData() {
     els.statusMsg.className = "msg loading";
-    els.statusMsg.innerHTML = "<span>⏳</span> Verificando atualizações...";
+    els.statusMsg.innerHTML = "<span>⏳</span> Lendo planilha local...";
 
     try {
-      // 1. Verifica o hash do último commit para saber se o arquivo mudou
-      const commitRes = await fetch(API_URL);
-      const commitData = await commitRes.json();
+      // Busca o arquivo na mesma pasta do index.html
+      const response = await fetch('./Pasta1.xlsx');
+      if (!response.ok) throw new Error("Arquivo não encontrado.");
       
-      if (commitData.length > 0) {
-        const latestSha = commitData[0].sha;
-        
-        // Se não forçou e o SHA é o mesmo, não faz nada
-        if (!force && latestSha === lastCommitSha) {
-          els.statusMsg.className = "msg success";
-          els.statusMsg.innerHTML = "<span>✅</span> Dashboard atualizado (Nenhuma alteração recente).";
-          return;
-        }
-        
-        lastCommitSha = latestSha;
-      }
-
-      // 2. Baixa o arquivo Excel
-      els.statusMsg.innerHTML = "<span>⏳</span> Baixando e processando a planilha...";
-      const fileRes = await fetch(RAW_URL);
-      if (!fileRes.ok) throw new Error("Arquivo não encontrado no repositório.");
-      
-      const arrayBuffer = await fileRes.arrayBuffer();
-      
-      // 3. Processa o Excel
+      const arrayBuffer = await response.arrayBuffer();
       processWorkbook(new Uint8Array(arrayBuffer));
       
       els.statusMsg.className = "msg success";
-      els.statusMsg.innerHTML = `<span>✅</span> Dados atualizados com sucesso! (Última versão: ${lastCommitSha.substring(0, 7)})`;
+      els.statusMsg.innerHTML = `<span>✅</span> Dados atualizados com sucesso!`;
 
     } catch (error) {
       console.error(error);
       els.statusMsg.className = "msg error";
-      els.statusMsg.innerHTML = `<span>❌</span> Erro ao carregar dados. Verifique as configurações.`;
+      els.statusMsg.innerHTML = `<span>❌</span> Erro ao ler o arquivo Pasta1.xlsx.`;
     }
   }
 
-  // ==========================================
-  // INICIALIZAÇÃO E LOOP DE VERIFICAÇÃO
-  // ==========================================
-  
-  // Busca dados ao carregar a página
-  window.addEventListener('DOMContentLoaded', () => {
-    fetchData(true);
-    
-    // Verifica a cada 30 segundos se o arquivo foi alterado no GitHub
-    checkInterval = setInterval(() => {
-      fetchData(false);
-    }, 30000);
-  });
-
+  window.addEventListener('DOMContentLoaded', fetchData);
 </script>
 </body>
 </html>
