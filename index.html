@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Análise de Vibrações — Dashboard (GERAL)</title>
+<title>Análise de Vibrações — Dashboard Automático (GERAL)</title>
+<!-- Importa a biblioteca SheetJS para ler o Excel no navegador -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #0f172a; --card: #1e293b; --card2: #273449;
@@ -18,19 +20,22 @@
     color: var(--txt); min-height: 100vh; padding: 32px 20px;
   }
   .wrap { max-width: 1200px; margin: 0 auto; }
-  
-  /* Caixa de input para colar os dados */
-  .input-area {
+
+  /* Status de Atualização */
+  .status-box {
     background: var(--card); border: 1px solid var(--ring); border-radius: 12px;
-    padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 20px -10px #000a;
+    padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 4px 20px -10px #000a;
   }
-  .input-area h2 { font-size: 1rem; color: var(--blue); margin-bottom: 12px; }
-  .input-area textarea {
-    width: 100%; height: 120px; background: #0b1222; color: var(--txt);
-    border: 1px solid var(--ring); border-radius: 8px; padding: 12px;
-    font-family: monospace; font-size: 0.85rem; resize: vertical;
+  .status-box .msg { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status-box .msg.success { color: var(--green); }
+  .status-box .msg.error { color: var(--red); }
+  .status-box .msg.loading { color: var(--amber); }
+  .status-box button {
+    background: var(--blue); color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
   }
-  .input-area p { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  .status-box button:hover { background: #2563eb; }
 
   header { margin-bottom: 28px; }
   header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; }
@@ -91,20 +96,20 @@
 <body>
 <div class="wrap">
   
-  <div class="input-area">
-    <h2>📋 Cole os dados da aba GERAL aqui</h2>
-    <textarea id="rawData" placeholder="Cole os dados copiados do Excel (colunas A a M). O script vai processar automaticamente."></textarea>
-    <p>Dica: Selecione todas as células no Excel (Ctrl+A) e copie (Ctrl+C). O script ignora o cabeçalho automaticamente.</p>
+  <div class="status-box">
+    <div class="msg loading" id="statusMsg">
+      <span>⏳</span> Carregando dados do GitHub...
+    </div>
+    <button onclick="fetchData(true)">🔄 Atualizar Agora</button>
   </div>
 
   <header>
     <span class="badge">Termografia & Vibração · St-0 · ABA GERAL</span>
     <h1>Análise de Vibrações — Dashboard de Alertas</h1>
-    <p>Os números são atualizados automaticamente conforme você cola os dados.</p>
+    <p>Os números são atualizados automaticamente a partir do arquivo <b>Pasta1.xlsx</b> no repositório.</p>
   </header>
 
   <section class="grid">
-    <!-- Cartão 1 sem o subtítulo -->
     <div class="card c1">
       <div class="label">📋 Total de Registros (St-0)</div>
       <div class="value" id="v1">—</div>
@@ -148,8 +153,22 @@
 </div>
 
 <script>
-  const inputArea = document.getElementById('rawData');
+  // ==========================================
+  // CONFIGURAÇÃO DO GITHUB
+  // ==========================================
+  const GITHUB_USER = "agnaldoantunessilva-svg";
+  const GITHUB_REPO = "srpreditiva";
+  const BRANCH = "principal"; // <-- CORRIGIDO AQUI
+  const FILE_NAME = "Pasta1.xlsx";
+
+  const RAW_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${BRANCH}/${FILE_NAME}`;
+  const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/commits?path=${FILE_NAME}&branch=${BRANCH}&per_page=1`;
+
+  let lastCommitSha = "";
+  let checkInterval = null;
+
   const els = {
+    statusMsg: document.getElementById('statusMsg'),
     v1: document.getElementById('v1'),
     v2: document.getElementById('v2'),
     v3: document.getElementById('v3'),
@@ -157,21 +176,23 @@
     grid: document.getElementById('totaisGrid')
   };
 
-  const COL_ST0 = 7;
-  const COL_SAP = 12;
-
-  function processData() {
-    const raw = inputArea.value;
-    if (!raw.trim()) return resetUI();
-
-    const lines = raw.split(/\r?\n/).filter(line => line.trim() !== '');
+  // ==========================================
+  // LÓGICA DE LEITURA E PROCESSAMENTO DO EXCEL
+  // ==========================================
+  function processWorkbook(data) {
+    const workbook = XLSX.read(data, { type: 'array' });
     
-    // Contadores para os cartões principais
+    // Pega a primeira aba (GERAL)
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Converte para JSON (array de arrays)
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
     let programados = 0;
     let naoProgramados = 0;
     let criticos = 0;
 
-    // Objeto para armazenar os detalhes de cada categoria
     let stats = {
       N:  { total: 0, comSap: 0, semSap: 0 },
       A1: { total: 0, comSap: 0, semSap: 0 },
@@ -180,14 +201,25 @@
       A4: { total: 0, comSap: 0, semSap: 0 }
     };
 
-    let startIndex = lines[0].includes('St-0') || lines[0].includes('Área') ? 1 : 0;
+    // Encontra os índices das colunas baseado no cabeçalho
+    let colSt0 = 7; 
+    let colSap = 12; 
 
-    for (let i = startIndex; i < lines.length; i++) {
-      const cols = lines[i].split('\t');
-      if (cols.length <= COL_ST0) continue;
+    const headerRow = rows[0];
+    if (headerRow) {
+      const idxSt0 = headerRow.findIndex(cell => String(cell).trim() === 'St-0');
+      const idxSap = headerRow.findIndex(cell => String(cell).includes('SAP'));
+      if (idxSt0 !== -1) colSt0 = idxSt0;
+      if (idxSap !== -1) colSap = idxSap;
+    }
 
-      const st0 = (cols[COL_ST0] || '').trim().toUpperCase();
-      const sap = (cols[COL_SAP] || '').trim();
+    // Itera sobre as linhas (pula o cabeçalho)
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      let st0 = String(row[colSt0] || '').trim().toUpperCase();
+      let sap = String(row[colSap] || '').trim();
 
       if (stats[st0] !== undefined) {
         stats[st0].total++;
@@ -198,7 +230,7 @@
         }
       }
 
-      // Regras dos cartões superiores
+      // Regras
       if (st0 === 'A1' || st0 === 'A3') {
         if (sap !== '') programados++;
         else naoProgramados++;
@@ -211,50 +243,97 @@
 
     const totalGeral = stats.N.total + stats.A1.total + stats.A2.total + stats.A3.total + stats.A4.total;
 
-    // Renderiza os cartões superiores
+    // Renderiza
     els.v1.textContent = totalGeral;
     els.v2.textContent = programados;
     els.v3.textContent = naoProgramados;
     els.v4.textContent = criticos;
 
-    // Renderiza a grade inferior com os subtextos
     els.grid.innerHTML = '';
-    for (const [key, data] of Object.entries(stats)) {
+    for (const [key, dataObj] of Object.entries(stats)) {
       const div = document.createElement('div');
       div.className = 'total-item';
       
-      // Monta o HTML interno de forma condicional
       let detailsHtml = '';
       if (key === 'N') {
-         // Para "N", apenas mostramos que não se aplica a programação
          detailsHtml = `<div class="details">Sem alerta</div>`;
       } else {
          detailsHtml = `
            <div class="details">
-             <b>${data.comSap}</b> Programados<br>
-             <b>${data.semSap}</b> Não Programados
+             <b>${dataObj.comSap}</b> Programados<br>
+             <b>${dataObj.semSap}</b> Não Programados
            </div>
          `;
       }
 
       div.innerHTML = `
         <span class="k">${key}</span>
-        <strong class="v">${data.total}</strong>
+        <strong class="v">${dataObj.total}</strong>
         ${detailsHtml}
       `;
       els.grid.appendChild(div);
     }
   }
 
-  function resetUI() {
-    els.v1.textContent = '—';
-    els.v2.textContent = '—';
-    els.v3.textContent = '—';
-    els.v4.textContent = '—';
-    els.grid.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;grid-column:1/-1;">Aguardando dados...</div>';
+  // ==========================================
+  // COMUNICAÇÃO COM O GITHUB
+  // ==========================================
+  async function fetchData(force = false) {
+    els.statusMsg.className = "msg loading";
+    els.statusMsg.innerHTML = "<span>⏳</span> Verificando atualizações...";
+
+    try {
+      // 1. Verifica o hash do último commit para saber se o arquivo mudou
+      const commitRes = await fetch(API_URL);
+      const commitData = await commitRes.json();
+      
+      if (commitData.length > 0) {
+        const latestSha = commitData[0].sha;
+        
+        // Se não forçou e o SHA é o mesmo, não faz nada
+        if (!force && latestSha === lastCommitSha) {
+          els.statusMsg.className = "msg success";
+          els.statusMsg.innerHTML = "<span>✅</span> Dashboard atualizado (Nenhuma alteração recente).";
+          return;
+        }
+        
+        lastCommitSha = latestSha;
+      }
+
+      // 2. Baixa o arquivo Excel
+      els.statusMsg.innerHTML = "<span>⏳</span> Baixando e processando a planilha...";
+      const fileRes = await fetch(RAW_URL);
+      if (!fileRes.ok) throw new Error("Arquivo não encontrado no repositório.");
+      
+      const arrayBuffer = await fileRes.arrayBuffer();
+      
+      // 3. Processa o Excel
+      processWorkbook(new Uint8Array(arrayBuffer));
+      
+      els.statusMsg.className = "msg success";
+      els.statusMsg.innerHTML = `<span>✅</span> Dados atualizados com sucesso! (Última versão: ${lastCommitSha.substring(0, 7)})`;
+
+    } catch (error) {
+      console.error(error);
+      els.statusMsg.className = "msg error";
+      els.statusMsg.innerHTML = `<span>❌</span> Erro ao carregar dados. Verifique as configurações.`;
+    }
   }
 
-  inputArea.addEventListener('input', processData);
+  // ==========================================
+  // INICIALIZAÇÃO E LOOP DE VERIFICAÇÃO
+  // ==========================================
+  
+  // Busca dados ao carregar a página
+  window.addEventListener('DOMContentLoaded', () => {
+    fetchData(true);
+    
+    // Verifica a cada 30 segundos se o arquivo foi alterado no GitHub
+    checkInterval = setInterval(() => {
+      fetchData(false);
+    }, 30000);
+  });
+
 </script>
 </body>
 </html>
