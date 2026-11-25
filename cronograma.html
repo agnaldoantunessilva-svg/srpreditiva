@@ -17,9 +17,7 @@
   .header-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
   #clock{font-variant-numeric:tabular-nums;font-size:.85rem;opacity:.9}
   
-  .btn-upload{background:#fff;color:var(--primary);border:none;padding:.55rem 1rem;border-radius:8px;cursor:pointer;font-weight:700;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.2s;display:flex;align-items:center;gap:.4rem}
-  .btn-upload:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
-  input[type="file"]{display:none}
+  /* Botão de atualizar manual removido */
 
   #statusBar{padding:.5rem 2rem;font-size:.85rem;background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047;display:none}
   #statusBar.show{display:block}
@@ -63,11 +61,8 @@
   <div class="header-left">
     <h1>🔧 Preditiva SR <span class="badge">Montenegro RS</span></h1>
   </div>
-
   <div class="header-right">
     <div id="clock"></div>
-    <button id="btnUploadCrono" class="btn-upload">🗓️ Atualizar Cronograma</button>
-    <input type="file" id="fileInputCrono" accept=".xls,.xlsx">
   </div>
 </header>
 <div id="statusBar"></div>
@@ -76,7 +71,10 @@
   <h2 style="margin-bottom:1rem">Cronograma Anual</h2>
   <div id="yearTabs" class="year-tabs"></div>
   <div id="monthGrid" class="month-grid"></div>
-  <div id="cronoContent"></div>
+  <div id="cronoContent">
+    <!-- Mensagem de carregamento inicial -->
+    <div class="empty">⏳ Carregando dados do cronograma...</div>
+  </div>
 </main>
 
 <script>
@@ -91,9 +89,16 @@ const DB = {
 let activeYear = new Date().getFullYear().toString();
 let activeMonth = 'JAN';
 
-const LS_KEY = 'menuPreditivaSR_v28';
-function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
-function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
+const statusBar = document.getElementById('statusBar');
+
+function setStatus(msg, tipo){
+  statusBar.textContent = msg;
+  statusBar.className = 'show';
+  statusBar.style.background = tipo==='error'?'#fee2e2':tipo==='ok'?'#dcfce7':'#fef9c3';
+  statusBar.style.color = tipo==='error'?'#991b1b':tipo==='ok'?'#166534':'#854d0e';
+  statusBar.style.borderBottomColor = tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#fde047';
+  if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
+}
 
 function norm(s){ return (s||'').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase(); }
 function cleanText(s) { return s ? String(s).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : ''; }
@@ -188,7 +193,7 @@ function renderCrono(){
   if(!years.length) {
     yearTabs.innerHTML = '';
     monthGrid.innerHTML = '';
-    content.innerHTML = '<div class="empty">Nenhum cronograma carregado. Clique em "🗓️ Atualizar Cronograma".</div>';
+    content.innerHTML = '<div class="empty">Nenhum dado encontrado na planilha do GitHub.</div>';
     return;
   }
 
@@ -262,41 +267,36 @@ window.setCronoMonth = function(m) {
   renderCrono();
 };
 
-const fileInputCrono = document.getElementById('fileInputCrono');
-const statusBar = document.getElementById('statusBar');
+// FUNÇÃO QUE BUSCA A PLANILHA DO GITHUB E ATUALIZA A PÁGINA SOZINHA
+async function carregarPlanilhaGitHub() {
+  // IMPORTANTE: O nome aqui deve ser EXATAMENTE igual ao arquivo no GitHub
+  const urlPlanilha = 'Cronograma Preditiva Innova.xlsx'; 
+  
+  setStatus('⏳ Buscando planilha no servidor...', 'info');
 
-function setStatus(msg, tipo){
-  statusBar.textContent = msg;
-  statusBar.className = 'show';
-  statusBar.style.background = tipo==='error'?'#fee2e2':tipo==='ok'?'#dcfce7':'#fef9c3';
-  statusBar.style.color = tipo==='error'?'#991b1b':tipo==='ok'?'#166534':'#854d0e';
-  statusBar.style.borderBottomColor = tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#fde047';
-  if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
+  try {
+    // Adiciona um "?v=" com a data atual para forçar o navegador a baixar a versão mais nova e não usar o cache antigo
+    const response = await fetch(urlPlanilha + '?v=' + new Date().getTime());
+    
+    if (!response.ok) throw new Error('Arquivo não encontrado no repositório');
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const wb = XLSX.read(arrayBuffer, {type:'array', cellDates:true});
+    
+    parseWorkbookCrono(wb);
+    renderCrono();
+    
+    setStatus(`✅ Cronograma atualizado automaticamente do GitHub!`, 'ok');
+  } catch (error) {
+    console.error(error);
+    setStatus('❌ Erro ao carregar a planilha do GitHub: ' + error.message, 'error');
+    document.getElementById('cronoContent').innerHTML = '<div class="empty">Erro ao buscar a planilha.<br>Verifique se o arquivo existe no GitHub com o nome correto.</div>';
+  }
 }
 
-document.getElementById('btnUploadCrono').addEventListener('click', () => fileInputCrono.click());
-
-fileInputCrono.addEventListener('change', async (e)=>{
-  const f = e.target.files[0]; if(!f) return;
-  setStatus(`⏳ Lendo planilha Cronograma: "${f.name}"...`);
-  try{
-    const buf = await f.arrayBuffer();
-    const wb = XLSX.read(buf, {type:'array', cellDates:true});
-    parseWorkbookCrono(wb);
-    saveLocal();
-    renderCrono();
-    setStatus(`✅ Cronograma processado com sucesso!`, 'ok');
-  }catch(err){
-    console.error(err);
-    setStatus('❌ Erro ao ler o Cronograma: '+err.message, 'error');
-  }
-  fileInputCrono.value='';
-});
-
+// Inicia o carregamento assim que a página abrir
 (function init(){
-  // Limpa o cache antigo do navegador para evitar conflito com a versão anterior
-  localStorage.removeItem(LS_KEY); 
-  renderCrono();
+  carregarPlanilhaGitHub();
 })();
 </script>
 </body>
