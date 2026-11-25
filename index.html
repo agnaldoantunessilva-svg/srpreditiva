@@ -119,10 +119,6 @@
   /* Subtextos informativos */
   .total-item .details { font-size: 0.65rem; color: var(--muted); line-height: 1.3; }
   .total-item .details b { color: #cbd5e1; font-weight: 600; }
-
-  .legend { margin-top: 24px; background: #0b1222cc; border: 1px solid var(--ring); border-radius: 12px; padding: 16px 18px; font-size: .82rem; color: var(--muted); }
-  .legend b { color: var(--txt); }
-  .legend ul { margin: 8px 0 0 18px; line-height: 1.7; }
 </style>
 </head>
 <body>
@@ -183,16 +179,6 @@
       <!-- Preenchido via JS -->
     </div>
   </div>
-
-  <div class="legend">
-    <b>Regras aplicadas:</b>
-    <ul>
-      <li><b>Total St-0:</b> Soma N, A1, A2, A3 e A4. (M, NM e P são ignorados).</li>
-      <li><b>Programados:</b> Apenas A1 e A3 com N. SAP preenchido.</li>
-      <li><b>Não Programados:</b> Apenas A1 e A3 com N. SAP vazio.</li>
-      <li><b>Críticos Sem SAP:</b> Apenas A2 (Mecânico Crítico) ou A4 (Elétrico Importante) sem SAP.</li>
-    </ul>
-  </div>
 </div>
 
 <script>
@@ -224,6 +210,15 @@
     v3: document.getElementById('v3'),
     v4: document.getElementById('v4'),
     grid: document.getElementById('totaisGrid')
+  };
+
+  // Rótulos amigáveis para a Contagem Separada
+  const LABELS = {
+    N:  'N',
+    A1: 'A1 (Mecânica)',
+    A2: 'A2 (Mecânica)',
+    A3: 'A3 (Thermo)',
+    A4: 'A4 (Thermo)'
   };
 
   function processWorkbook(data) {
@@ -295,7 +290,7 @@
       } else {
          detailsHtml = `<div class="details"><b>${dataObj.comSap}</b> Programados<br><b>${dataObj.semSap}</b> Não Programados</div>`;
       }
-      div.innerHTML = `<span class="k">${key}</span><strong class="v">${dataObj.total}</strong>${detailsHtml}`;
+      div.innerHTML = `<span class="k">${LABELS[key] || key}</span><strong class="v">${dataObj.total}</strong>${detailsHtml}`;
       els.grid.appendChild(div);
     }
   }
