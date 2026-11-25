@@ -9,6 +9,7 @@
   :root{--primary:#1e40af;--primary-dark:#1e3a8a;--bg:#f1f5f9;--card:#fff;--text:#1e293b;--border:#cbd5e1;--n:#16a34a;--a1:#eab308;--a2:#f97316;--a3:#ef4444;--a4:#991b1b;--p:#64748b;--m:#8b5cf6}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  
   header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:.5rem}
   .header-left{display:flex;align-items:center;gap:1rem}
   .logo-box{background:#fff;padding:.3rem .6rem;border-radius:6px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.1)}
@@ -17,38 +18,55 @@
   header .badge{background:rgba(255,255,255,.2);padding:.25rem .75rem;border-radius:999px;font-size:.8rem}
   .header-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
   #clock{font-variant-numeric:tabular-nums;font-size:.85rem;opacity:.9}
+  
   .btn-upload{background:#fff;color:var(--primary);border:none;padding:.55rem 1rem;border-radius:8px;cursor:pointer;font-weight:700;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.2s;display:flex;align-items:center;gap:.4rem}
   .btn-upload:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
   input[type="file"]{display:none}
+
   #statusBar{padding:.5rem 2rem;font-size:.85rem;background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047;display:none}
   #statusBar.show{display:block}
+
   .global-legend{background:#e2e8f0; padding:.5rem 2rem; display:flex; flex-wrap:wrap; gap:1.5rem; border-bottom:1px solid var(--border); font-size:.8rem; align-items:center}
   .legend-group{display:flex; align-items:center; gap:.5rem}
   .legend-title{font-weight:700; color:var(--primary-dark)}
   .legend-item{display:flex; align-items:center; gap:.25rem}
-  main{padding:2rem;max-width:1600px;margin:0 auto}
+
+  main{padding:2rem;max-width:1800px;margin:0 auto}
+
   .toolbar{display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
   .toolbar input,.toolbar select{padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem}
-  .toolbar input{flex:1;min-width:200px}
+  .toolbar input{flex:1;min-width:150px}
+
+  /* Configuração da tabela com auto-ajuste */
   table.data{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06); font-size:11px; table-layout: auto;}
   table.data thead{background:var(--primary);color:#fff}
   table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap;}
-  table.data td{padding:.5rem .4rem;border-bottom:1px solid #f1f5f9;vertical-align:top; word-break: break-word;}
+  
+  /* Força a quebra de linha em textos longos e ajusta as células */
+  table.data td{padding:.6rem .5rem; border-bottom:1px solid #f1f5f9; vertical-align:top; white-space: normal; word-break: break-word;}
   table.data tbody tr:hover{background:#f8fafc}
-  table.data tbody tr:last-child td{border-bottom:none}
-  table.data td.tag-col { min-width: 150px; max-width: 250px;}
-  table.data th.col-wide, table.data td.col-wide { width: 25%; min-width: 160px; }
+  table.data tbody tr:last-child{border-bottom:none}
+
+  /* Colunas de texto curto NÃO quebram linha (evita ficar esmagado) */
+  table.data th:not(.col-wide), table.data td:not(.col-wide) { white-space: nowrap; }
+  table.data td.tag-col { white-space: nowrap; }
+  
+  /* Colunas de texto longo têm um tamanho mínimo garantido */
+  table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; }
+
   .status{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
   .status.N{background:#dcfce7;color:var(--n)}.status.A1{background:#fef9c3;color:#a16207}
   .status.A2{background:#ffedd5;color:#c2410c}.status.A3{background:#fee2e2;color:var(--a3)}
   .status.A4{background:#7f1d1d;color:#fff}.status.P{background:#e2e8f0;color:var(--p)}
   .status.M{background:#ede9fe;color:var(--m)}.status.NM{background:#f1f5f9;color:#94a3b8}
-  .empty{text-align:center;padding:3rem 1rem;color:#94a3b8;background:var(--card);border-radius:12px;border:2px dashed var(--border)}
+
   @media(max-width:768px){
     main{padding:1rem}header{padding:.75rem 1rem}
     table.data{font-size:11px}
     .global-legend{padding:.5rem 1rem;gap:.75rem}
     header h1{display:none}
+    .toolbar{flex-direction:column; align-items:stretch}
+    .toolbar input{width:100%}
   }
 </style>
 </head>
@@ -60,9 +78,10 @@
     <div class="logo-box"><img src="sr.png" alt="SR Soluções" onerror="this.style.display='none'"></div>
     <h1>🔧 Preditiva SR <span class="badge">Montenegro RS</span></h1>
   </div>
+
   <div class="header-right">
     <div id="clock"></div>
-    <button id="btnUploadDiag" class="btn-upload">📤 Atualizar Preditiva (.xls / .xlsx)</button>
+    <button id="btnReload" class="btn-upload">🔄 Atualizar Página</button>
     <input type="file" id="fileInputDiag" accept=".xls,.xlsx">
   </div>
 </header>
@@ -91,8 +110,11 @@
 
 <main>
   <h2>Lista Geral de Ativos</h2>
+  
   <div class="toolbar" style="margin-top:1rem">
-    <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, local ou diagnóstico...">
+    <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, diagnóstico ou recomendação...">
+    <input type="text" id="filterLocal" placeholder="📍 Filtrar por Local...">
+    <input type="text" id="filterSap" placeholder="🔢 Filtrar por N. SAP...">
     <select id="filterGeral">
       <option value="">Todos os status</option>
       <option value="N">Normal</option><option value="M">Manutenção</option>
@@ -101,14 +123,15 @@
       <option value="A3">A3 - Alerta inicial</option><option value="A4">A4 - Crítico</option>
     </select>
   </div>
+
   <div style="overflow-x:auto">
     <table class="data" id="tableGeral">
       <thead>
         <tr>
-          <th>Área</th><th>Local</th><th>TAG</th><th>Insp.</th>
+          <th>Local</th><th>TAG</th><th>Insp.</th>
           <th>St-2</th><th>St-1</th><th>St-0</th><th>Dta St-0</th>
           <th class="col-wide">Diagnósticos</th><th class="col-wide">Recomendações</th>
-          <th>N.Relatório</th><th>N. Sap</th>
+          <th>N.Relatório</th><th>N. SAP</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -121,7 +144,7 @@ function tick(){const n=new Date();document.getElementById('clock').textContent=
 setInterval(tick,1000);tick();
 
 const DB = { areas: [], diagnostico: {}, updatedAt: null };
-const LS_KEY = 'menuPreditivaSR_v28';
+const LS_KEY = 'menuPreditivaSR_v31'; // Nova chave para limpar o cache bugado anterior
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
@@ -142,7 +165,7 @@ function extrairRelatorio(texto) {
   return match ? match[1] : '-';
 }
 
-// --- PARSER EXATO PARA A PLANILHA "Pasta1.xlsx" (Colunas B a M) ---
+// --- LEITURA BLINDADA POR ÍNDICE DE COLUNA (B até M) ---
 function parseWorkbookPreditiva(wb){
   DB.areas = []; DB.diagnostico = {};
   let totalImportados = 0;
@@ -154,7 +177,7 @@ function parseWorkbookPreditiva(wb){
 
     let headerIdx = -1;
     
-    // Encontra a linha do cabeçalho buscando a palavra TAG
+    // 1. Encontra a linha do cabeçalho procurando a palavra "TAG"
     for(let i=0; i<Math.min(rows.length, 50); i++) {
         const rowStr = rows[i].map(norm).join(' ');
         if(rowStr.includes('TAG') || rowStr.includes('LOCAL')) {
@@ -165,53 +188,43 @@ function parseWorkbookPreditiva(wb){
 
     if(headerIdx >= 0) {
       let areaNome = nameRaw.trim().toUpperCase();
-      
-      const h = rows[headerIdx].map(norm);
-      
-      // Mapeamento exato identificando as colunas
-      const col = (...names) => {
-        for(const n of names){
-          const idx = h.findIndex(cell => cell && (cell === norm(n) || cell.includes(norm(n))));
-          if(idx >= 0) return idx;
-        }
-        return -1;
-      };
-
-      const iS   = col('AREA'); // Vai pegar a coluna B (ignorando "Area Aba")
-      const iL   = col('LOCAL');
-      const iT   = col('TAG', 'CONJUNTO');
-      const iTi  = col('INSP', 'TIPO', 'INSPECAO');
-      const i2   = col('ST2', 'ST-2', 'STATUS2');
-      const i1   = col('ST1', 'ST-1', 'STATUS1');
-      const i0   = col('ST0', 'ST-0', 'STATUS0');
-      const iD   = col('DTAST0', 'DTA', 'DATA');
-      const iDi  = col('DIAGNOSTICOS', 'DIAGNOSTICO');
-      const iR   = col('RECOMENDACOES', 'RECOMENDACAO');
-      const iRel = col('NRELATORIO', 'RELATORIO', 'NRELAT');
-      const iSap = col('SAP', 'NSAP', 'NSAP');
-
       const out = [];
+      
+      // 2. Lê linha por linha baseado na posição fixa da sua planilha (A=0, B=1, C=2...)
       for(let r = headerIdx + 1; r < rows.length; r++){
-        const row = rows[r]; if(!row || row.length === 0) continue;
+        const row = rows[r]; 
+        if(!row || row.length === 0) continue;
 
-        const tag = iT >= 0 ? cleanText(row[iT]) : '';
+        // Mapeamento direto pelo índice da coluna (garantido pela sua imagem)
+        // B: Local (Índice 1)
+        // C: TAG (Índice 2)
+        // D: Insp (Índice 3)
+        // E, F, G: St-2, St-1, St-0 (Índices 4, 5, 6)
+        // H: Dta St-0 (Índice 7)
+        // I: Diagnósticos (Índice 8)
+        // J: Recomendações (Índice 9)
+        // K: N. Relatório (Índice 10)
+        // L: SAP (Índice 11)
         
-        // Se não tem TAG e não tem Local, pula a linha
-        if(!tag && !cleanText(row[iL])) continue; 
+        const local = cleanText(row[1]);
+        const tag   = cleanText(row[2]);
+        
+        // Se a linha estiver vazia tanto em Local quanto em TAG, ignora
+        if(!local && !tag) continue; 
 
         out.push({
-          setor: iS  >= 0 ? cleanText(row[iS])  : areaNome,
-          local: iL  >= 0 ? cleanText(row[iL])  : '',
+          setor: areaNome,
+          local: local,
           tag:   tag || 'S/TAG',
-          tipo:  iTi >= 0 ? cleanText(row[iTi]) : '',
-          s2:    i2  >= 0 ? norm(row[i2])  : '',
-          s1:    i1  >= 0 ? norm(row[i1])  : '',
-          s0:    i0  >= 0 ? norm(row[i0])  : '',
-          data:  iD  >= 0 ? fmtDate(row[iD]) : '',
-          diag:  iDi >= 0 ? cleanText(row[iDi]) : '',
-          rec:   iR  >= 0 ? cleanText(row[iR])  : '',
-          relatorioFixo: iRel >= 0 ? row[iRel] : null,
-          sap: iSap >= 0 ? cleanText(row[iSap]) : ''
+          tipo:  cleanText(row[3]),
+          s2:    norm(row[4]),
+          s1:    norm(row[5]),
+          s0:    norm(row[6]),
+          data:  fmtDate(row[7]),
+          diag:  cleanText(row[8]), // Índice 8: Força a pegar a coluna I
+          rec:   cleanText(row[9]), // Índice 9: Força a pegar a coluna J
+          relatorioFixo: row[10],
+          sap:   cleanText(row[11])
         });
       }
       
@@ -222,10 +235,6 @@ function parseWorkbookPreditiva(wb){
     }
   });
 
-  if(totalImportados === 0) {
-      console.warn("Nenhum dado encontrado. Verifique a estrutura da planilha.");
-  }
-
   DB.updatedAt = new Date().toISOString();
 }
 
@@ -235,12 +244,17 @@ function renderGeral(){
   Object.entries(DB.diagnostico).forEach(([area,arr])=> arr.forEach(x=> all.push({...x, area})));
   
   const q = (document.getElementById('searchGeral').value||'').toLowerCase();
-  const f = document.getElementById('filterGeral').value;
+  const fLoc = (document.getElementById('filterLocal').value||'').toLowerCase();
+  const fSap = (document.getElementById('filterSap').value||'').toLowerCase();
+  const fStatus = document.getElementById('filterGeral').value;
   
   const filt = all.filter(x=>{
-    const okQ = !q || [x.tag,x.local,x.diag,x.rec,x.area, x.setor].join(' ').toLowerCase().includes(q);
-    const okF = !f || norm(x.s0)===f;
-    return okQ && okF;
+    const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
+    const okLoc = !fLoc || x.local.toLowerCase().includes(fLoc);
+    const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
+    const okStatus = !fStatus || norm(x.s0)===fStatus;
+    
+    return okQ && okLoc && okSap && okStatus;
   });
 
   tb.innerHTML = filt.length ? filt.map(x=>{
@@ -249,7 +263,6 @@ function renderGeral(){
 
     return `
     <tr>
-      <td>${esc(x.setor||x.area)}</td>
       <td>${esc(x.local)}</td>
       <td class="tag-col"><strong>${esc(x.tag)}</strong></td>
       <td>${esc(x.tipo)}</td>
@@ -261,10 +274,12 @@ function renderGeral(){
       <td class="col-wide">${esc(x.rec)}</td>
       <td>${esc(rel)}</td>
       <td>${esc(x.sap)}</td>
-    </tr>`}).join('') : `<tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado.</td></tr>`;
+    </tr>`}).join('') : `<tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado com os filtros atuais.</td></tr>`;
 }
 
 document.getElementById('searchGeral').addEventListener('input',renderGeral);
+document.getElementById('filterLocal').addEventListener('input',renderGeral);
+document.getElementById('filterSap').addEventListener('input',renderGeral);
 document.getElementById('filterGeral').addEventListener('change',renderGeral);
 
 const fileInputDiag = document.getElementById('fileInputDiag');
@@ -279,22 +294,32 @@ function setStatus(msg, tipo){
   if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
 }
 
-document.getElementById('btnUploadDiag').addEventListener('click', () => fileInputDiag.click());
+document.getElementById('btnReload').addEventListener('click', async ()=>{
+  setStatus('⏳ Buscando dados atualizados no servidor...');
+  const btn = document.getElementById('btnReload');
+  btn.innerHTML = '⏳ Carregando...';
+  
+  const carregou = await carregarArquivoAutomatico();
+  
+  btn.innerHTML = '🔄 Atualizar Página';
+  
+  if(!carregou) {
+    setStatus('❌ Não foi possível baixar os dados. Verifique sua conexão.', 'error');
+  }
+});
 
+document.getElementById('btnUploadDiag').addEventListener('click', () => fileInputDiag.click());
 fileInputDiag.addEventListener('change', async (e)=>{
   const f = e.target.files[0]; if(!f) return;
   setStatus(`⏳ Lendo planilha: "${f.name}"...`);
-
   try{
     const buf = await f.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
-
     saveLocal();
     renderGeral();
     setStatus(`✅ Planilha processada com sucesso!`, 'ok');
   }catch(err){
-    console.error(err);
     setStatus('❌ Erro ao importar: ' + err.message, 'error');
   }
   fileInputDiag.value='';
@@ -304,16 +329,16 @@ async function carregarArquivoAutomatico(){
   const nomeArquivo = 'Pasta1.xlsx';
   try{
     const resp = await fetch(`${nomeArquivo}?t=${new Date().getTime()}`, { cache: 'no-store' });
-    if(!resp.ok) throw new Error(`Arquivo não encontrado (Status: ${resp.status})`);
+    if(!resp.ok) throw new Error(`Arquivo não encontrado`);
     const buf = await resp.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
     renderGeral();
-    setStatus(`✅ Dados atualizados automaticamente a partir de "${nomeArquivo}".`, 'ok');
+    setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
     return true;
   }catch(e){
-    console.warn("Falha na carga automática:", e.message);
+    console.warn("Falha na carga:", e.message);
     return false;
   }
 }
@@ -323,16 +348,7 @@ async function carregarArquivoAutomatico(){
   if(temLocal) renderGeral();
   
   setStatus('⏳ Buscando dados atualizados no servidor...');
-  const carregou = await carregarArquivoAutomatico();
-  
-  if(carregou){
-    // sucesso
-  } else if(temLocal){
-    setStatus(`Dados carregados da memória local.`, 'info');
-  } else {
-    renderGeral();
-    setStatus('⚠️ Nenhum dado disponível. Verifique se "Pasta1.xlsx" existe ou faça upload manual.', 'error');
-  }
+  await carregarArquivoAutomatico();
 })();
 </script>
 </body>
