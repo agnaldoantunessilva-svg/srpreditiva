@@ -36,6 +36,19 @@
   .legend-title{font-weight:700; color:var(--primary-dark)}
   .legend-item{display:flex; align-items:center; gap:.25rem}
 
+  /* Faixa de filtro vindo da URL */
+  #filtroUrlBar{
+    display:none; padding:.6rem 2rem; font-size:.9rem; font-weight:600;
+    background:#dbeafe; color:#1e3a8a; border-bottom:1px solid #93c5fd;
+    align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+  }
+  #filtroUrlBar.show{display:flex}
+  #filtroUrlBar .btn-clear{
+    background:#1e40af; color:#fff; border:none; padding:.35rem .85rem;
+    border-radius:6px; cursor:pointer; font-weight:700; font-size:.8rem;
+  }
+  #filtroUrlBar .btn-clear:hover{background:#1e3a8a}
+
   main{padding:2rem;max-width:1800px;margin:0 auto}
 
   .toolbar{display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
@@ -85,26 +98,15 @@
 
   /* --- REGRAS DE IMPRESSÃO --- */
   @media print {
-    /* Esconde tudo que não é tabela */
-    header, .toolbar, .contador-box, .btn-upload, .global-legend, #statusBar { display: none !important; }
-    
-    /* Tira a cor de fundo da página e ajusta as margens */
+    header, .toolbar, .contador-box, .btn-upload, .global-legend, #statusBar, #filtroUrlBar { display: none !important; }
     body { background: #fff; margin: 0; padding: 0; font-size: 10px; color: #000; }
     main { padding: 0; max-width: 100%; }
     h2 { display: none; }
-    
-    /* Força a impressão da coluna oculta (Área) no papel */
     .hide-col { display: table-cell !important; }
-    
-    /* Garante que as bordas apareçam no papel */
     table.data { border-collapse: collapse; width: 100%; border: 1px solid #000; }
     table.data th, table.data td { border: 1px solid #000 !important; padding: 4px; color: #000; }
-    
-    /* Fundo branco no cabeçalho da tabela */
     table.data thead { background: #fff; color: #000; }
     table.data th { border-bottom: 2px solid #000 !important; }
-    
-    /* Remove cores de fundo de badges na impressão */
     .status { border: 1px solid #000 !important; background: transparent !important; color: #000 !important; }
   }
 </style>
@@ -129,6 +131,12 @@
   </div>
 </header>
 <div id="statusBar"></div>
+
+<!-- Faixa de filtro vindo do index.html (?st0=A1) -->
+<div id="filtroUrlBar">
+  <span id="filtroUrlTxt"></span>
+  <button class="btn-clear" id="btnLimparFiltroUrl">✕ Ver todos os registros</button>
+</div>
 
 <div class="global-legend">
   <div class="legend-group">
@@ -198,13 +206,11 @@
 </main>
 
 <script>
-// ... (O código JavaScript continua IDÊNTICO, apenas adicionarei o evento do botão de imprimir no final) ...
-
 function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('pt-BR')+' '+n.toLocaleTimeString('pt-BR');}
 setInterval(tick,1000);tick();
 
 const DB = { areas: [], diagnostico: {}, updatedAt: null };
-const LS_KEY = 'menuPreditivaSR_v36'; // Chave limpa
+const LS_KEY = 'menuPreditivaSR_v36';
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
@@ -310,6 +316,37 @@ function atualizarListaSuspensaAreas() {
   select.value = valorAtual;
 }
 
+// ---------- FILTRO VIA URL (?st0=A1) ----------
+function getSt0FromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const v = (params.get('st0') || '').trim().toUpperCase();
+  return ['A1','A2','A3','A4','N','M','NM','P'].includes(v) ? v : '';
+}
+
+function aplicarFiltroUrl() {
+  const st0 = getSt0FromUrl();
+  const bar = document.getElementById('filtroUrlBar');
+  const txt = document.getElementById('filtroUrlTxt');
+  const select = document.getElementById('filterGeral');
+
+  if (st0) {
+    select.value = st0;
+    txt.innerHTML = `🔎 Filtro ativo vindo do Dashboard: <b>St-0 = ${esc(st0)}</b> — exibindo apenas registros com este status.`;
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+    txt.textContent = '';
+  }
+}
+
+document.getElementById('btnLimparFiltroUrl').addEventListener('click', () => {
+  // Remove o parâmetro ?st0=... da URL e recarrega
+  const url = new URL(window.location.href);
+  url.searchParams.delete('st0');
+  window.location.href = url.toString();
+});
+
+// ---------- RENDER ----------
 function renderGeral(){
   const tb = document.querySelector('#tableGeral tbody');
   const all = [];
@@ -426,15 +463,56 @@ async function carregarArquivoAutomatico(){
   }
 }
 
+// ---------- ATUALIZAÇÃO AUTOMÁTICA A CADA 60s ----------
+let autoRefreshTimer = null;
+function iniciarAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(async () => {
+    // Recarrega os dados do servidor e re-renderiza, sem perder filtros/scroll
+    const ok = await carregarArquivoAutomaticoSilencioso();
+    if (ok) {
+      // mantém filtro da URL ativo
+      aplicarFiltroUrl();
+      renderGeral();
+      console.log('[auto-refresh] Dados atualizados automaticamente:', new Date().toLocaleTimeString('pt-BR'));
+    }
+  }, 60000); // 60 segundos
+}
+
+// Versão silenciosa (não mostra status na tela, para não incomodar)
+async function carregarArquivoAutomaticoSilencioso(){
+  try{
+    const resp = await fetch(`Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
+    if(!resp.ok) throw new Error('Arquivo não encontrado');
+    const buf = await resp.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    parseWorkbookPreditiva(wb);
+    saveLocal();
+    atualizarListaSuspensaAreas();
+    return true;
+  }catch(e){
+    console.warn('[auto-refresh] falha:', e.message);
+    return false;
+  }
+}
+
 (async function init(){
   const temLocal = loadLocal();
   if(temLocal) {
     atualizarListaSuspensaAreas();
+    aplicarFiltroUrl();  // aplica filtro da URL ANTES de renderizar
     renderGeral();
   }
   
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
+  
+  // Reaplica o filtro da URL após a carga assíncrona (se houver)
+  aplicarFiltroUrl();
+  renderGeral();
+  
+  // Inicia atualização automática
+  iniciarAutoRefresh();
 })();
 </script>
 </body>
