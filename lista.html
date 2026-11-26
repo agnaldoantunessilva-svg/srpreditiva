@@ -189,7 +189,14 @@ const LS_KEY = 'menuPreditivaSR_v36';
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
-function norm(s){ return (s||'').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase(); }
+// CORREÇÃO AQUI: Força a conversão para maiúsculas e remove QUALQUER caractere invisível, acento ou pontuação
+function norm(s){ 
+  return (s||'').toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos (se houver)
+    .replace(/[^A-Z0-9]/gi, '') // Mantém apenas letras e números
+    .toUpperCase(); 
+}
+
 function cleanText(s) { if(!s) return ''; return String(s).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); }
 function fmtDate(v){
   if(v===null||v===undefined||v==='') return '';
@@ -293,7 +300,7 @@ function atualizarListaSuspensaAreas() {
 // ---------- FILTRO VIA URL (?st0=A1) ----------
 function getSt0FromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const v = (params.get('st0') || '').trim().toUpperCase();
+  const v = norm(params.get('st0')); // Normaliza a URL também
   return ['A1','A2','A3','A4','N','M','NM','P'].includes(v) ? v : '';
 }
 
@@ -328,13 +335,16 @@ function renderGeral(){
   const q = (document.getElementById('searchGeral').value||'').toLowerCase();
   const fArea = document.getElementById('filterArea').value;
   const fSap = (document.getElementById('filterSap').value||'').toLowerCase();
-  const fStatus = document.getElementById('filterGeral').value;
+  const fStatus = norm(document.getElementById('filterGeral').value); // Normaliza o filtro do select
   
   const filt = all.filter(x=>{
     const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
     const okArea = !fArea || x.setor.trim() === fArea;
     const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
-    const okStatus = !fStatus || norm(x.s0)===fStatus;
+    
+    // Compara o status da linha normalizado com o filtro normalizado
+    const okStatus = !fStatus || norm(x.s0) === fStatus;
+    
     return okQ && okArea && okSap && okStatus;
   });
 
@@ -407,7 +417,6 @@ fileInputDiag.addEventListener('change', async (e)=>{
   fileInputDiag.value='';
 });
 
-// Função principal de carga
 async function carregarArquivoAutomatico(){
   const nomeArquivo = './Pasta1.xlsx';
   try{
@@ -429,7 +438,6 @@ async function carregarArquivoAutomatico(){
   }
 }
 
-// Auto-refresh
 let autoRefreshTimer = null;
 function iniciarAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
@@ -448,22 +456,14 @@ function iniciarAutoRefresh() {
   }, 60000);
 }
 
-// INICIALIZAÇÃO
 (async function init(){
-  // 1. Aplica o filtro visual imediatamente
   aplicarFiltroUrl();
-  
-  // 2. Renderiza o cache se existir
   if(loadLocal()) {
     atualizarListaSuspensaAreas();
     renderGeral();
   }
-  
-  // 3. Busca os dados frescos do servidor
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
-  
-  // 4. Inicia timer de auto-refresh
   iniciarAutoRefresh();
 })();
 </script>
