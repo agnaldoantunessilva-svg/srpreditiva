@@ -37,6 +37,20 @@
   .toolbar input,.toolbar select{padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem}
   .toolbar input{flex:1;min-width:150px}
 
+  /* Contador de registros */
+  .contador-box {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--primary-dark);
+    background: #e2e8f0;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    display: inline-block;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    border-left: 4px solid var(--primary);
+  }
+
   table.data{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06); font-size:11px; table-layout: auto;}
   table.data thead{background:var(--primary);color:#fff}
   table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap;}
@@ -51,9 +65,9 @@
   /* Configuração para colunas longas (Diagnóstico e Recomendação) */
   table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; white-space: normal; }
   
-  /* --- CLASSE PARA OCULTAR A COLUNA ÁREA --- */
+  /* --- CLASSE PARA OCULTAR COLUNAS (Área e Insp.) --- */
   .hide-col {
-    display: none;
+    display: none !important;
   }
 
   .status{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
@@ -126,15 +140,17 @@
     </select>
   </div>
 
+  <!-- Contador de registros -->
+  <div class="contador-box" id="contadorRegistros">Mostrando 0 registros</div>
+
   <div style="overflow-x:auto">
     <table class="data" id="tableGeral">
       <thead>
         <tr>
-          <!-- Cabeçalho completo com a coluna Área -->
           <th class="hide-col">Área</th>
           <th>Local</th>
           <th>TAG</th>
-          <th>Insp.</th>
+          <th class="hide-col">Insp.</th> <!-- Ocultada via CSS -->
           <th>St-2</th>
           <th>St-1</th>
           <th>St-0</th>
@@ -155,7 +171,7 @@ function tick(){const n=new Date();document.getElementById('clock').textContent=
 setInterval(tick,1000);tick();
 
 const DB = { areas: [], diagnostico: {}, updatedAt: null };
-const LS_KEY = 'menuPreditivaSR_v32'; // Chave atualizada para limpar cache bugado anterior
+const LS_KEY = 'menuPreditivaSR_v33'; // Limpa caches antigos
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
@@ -188,7 +204,6 @@ function parseWorkbookPreditiva(wb){
 
     let headerIdx = -1;
     
-    // Encontra o cabeçalho buscando a palavra "TAG"
     for(let i=0; i<Math.min(rows.length, 50); i++) {
         const rowStr = rows[i].map(norm).join(' ');
         if(rowStr.includes('TAG') || rowStr.includes('LOCAL')) {
@@ -201,12 +216,7 @@ function parseWorkbookPreditiva(wb){
       let areaNome = nameRaw.trim().toUpperCase();
       const out = [];
       
-      // Mapeamento EXATO por coluna (A=0, B=1, C=2...)
-      // Baseado na sua imagem do Excel:
-      // A=0 (Área Aba), B=1 (Área), C=2 (Local), D=3 (TAG), E=4 (Insp), 
-      // F=5 (St-2), G=6 (St-1), H=7 (St-0), I=8 (Dta St-0), 
-      // J=9 (Diagnósticos), K=10 (Recomendações), L=11 (N. Relatório), M=12 (SAP)
-      
+      // A=0, B=1, C=2(Local), D=3(TAG), E=4(Insp), F=5(St2), G=6(St1), H=7(St0), I=8(Dta), J=9(Diag), K=10(Rec), L=11(Rel), M=12(SAP)
       for(let r = headerIdx + 1; r < rows.length; r++){
         const row = rows[r]; 
         if(!row || row.length === 0) continue;
@@ -217,10 +227,10 @@ function parseWorkbookPreditiva(wb){
         if(!local && !tag) continue; 
 
         out.push({
-          areaAba: cleanText(row[0]),     // A
-          setor:   cleanText(row[1]),     // B
-          local:   local,                 // C
-          tag:     tag || 'S/TAG',        // D
+          areaAba: cleanText(row[0]),
+          setor:   cleanText(row[1]),
+          local:   local,
+          tag:     tag || 'S/TAG',
           tipo:    cleanText(row[4]),     // E
           s2:      norm(row[5]),          // F
           s1:      norm(row[6]),          // G
@@ -262,17 +272,21 @@ function renderGeral(){
     return okQ && okLoc && okSap && okStatus;
   });
 
+  // ATUALIZA O CONTADOR DE REGISTROS
+  const elContador = document.getElementById('contadorRegistros');
+  elContador.textContent = `Mostrando ${filt.length} registro(s)`;
+
   tb.innerHTML = filt.length ? filt.map(x=>{
     let rel = x.relatorioFixo;
     if(!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
 
-    // A td da área está com a classe hide-col
+    // A td de Área e Insp. estão com a classe hide-col
     return `
     <tr>
       <td class="hide-col">${esc(x.setor)}</td>
       <td>${esc(x.local)}</td>
       <td class="tag-col"><strong>${esc(x.tag)}</strong></td>
-      <td>${esc(x.tipo)}</td>
+      <td class="hide-col">${esc(x.tipo)}</td> <!-- Insp. oculta -->
       <td>${stBadge(x.s2)}</td>
       <td>${stBadge(x.s1)}</td>
       <td>${stBadge(x.s0)}</td>
