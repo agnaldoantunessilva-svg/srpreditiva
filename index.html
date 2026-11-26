@@ -3,148 +3,257 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Alertas — Análise de Vibrações</title>
+<title>Dashboard de Monitoramento — Vibração & Termografia</title>
 <!-- Importa a biblioteca SheetJS para ler o Excel no navegador -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
+  /* --- VARIÁVEIS E RESET --- */
   :root {
-    --bg: #0f172a; --card: #1e293b; --card2: #273449;
-    --txt: #e2e8f0; --muted: #94a3b8;
-    --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
-    --ring: rgba(255, 255, 255, 0.08);
+    --bg: #070a13; /* Fundo bem escuro, estilo sala de controle */
+    --panel: rgba(15, 23, 42, 0.75);
+    --panel-border: rgba(56, 189, 248, 0.2); /* Borda ciano sutil */
+    --txt: #e2e8f0;
+    --muted: #8b9bb4;
+    
+    /* Cores de status técnicos */
+    --cyan: #06b6d4;   /* Monitoramento / Sensores */
+    --green: #10b981;  /* Normal / Programado */
+    --amber: #f59e0b;  /* Alerta Inicial / Não Prog. */
+    --red: #ef4444;    /* Crítico / Falha */
+    
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
   }
+  
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  
   body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: radial-gradient(1200px 600px at 20% -10%, #1e3a8a33, transparent), var(--bg);
-    color: var(--txt); min-height: 100vh; padding: 32px 20px;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    /* Fundo simulando grade de osciloscópio / tela de engenharia */
+    background-image: 
+      linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
+    background-size: 40px 40px, 40px 40px, 100% 100%;
+    color: var(--txt); 
+    min-height: 100vh; 
+    padding: 40px 20px;
   }
-  .wrap { max-width: 1200px; margin: 0 auto; }
+  .wrap { max-width: 1300px; margin: 0 auto; }
 
-  /* Relógio no topo */
+  /* --- RELÓGIO NO TOPO --- */
   .top-bar {
-    display: flex; justify-content: flex-end; align-items: center;
-    margin-bottom: 16px; font-size: 0.95rem; color: var(--muted);
-    font-weight: 500; letter-spacing: 0.02em;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
   }
-  .top-bar .clock { background: var(--card); padding: 6px 14px; border-radius: 8px; border: 1px solid var(--ring); }
+  .sys-title { 
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; 
+    color: var(--cyan); text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+  }
+  .sys-title::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; 
+    background: var(--cyan); border-radius: 50%; box-shadow: 0 0 10px var(--cyan);
+    animation: pulse 2s infinite;
+  }
+  .top-bar .clock { 
+    font-family: var(--font-mono);
+    background: rgba(0, 0, 0, 0.4); 
+    padding: 8px 16px; border-radius: 6px; 
+    border: 1px solid rgba(56, 189, 248, 0.15); 
+    font-size: 0.9rem; color: var(--txt);
+  }
 
-  /* Botões de Navegação */
+  /* --- BOTÕES DE NAVEGAÇÃO --- */
   .nav-buttons {
-    display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+    display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap;
   }
   .nav-buttons a {
     display: inline-flex; align-items: center; gap: 8px;
-    background: var(--card2); color: var(--txt); text-decoration: none;
-    padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem;
-    border: 1px solid var(--ring); transition: all 0.2s;
-    box-shadow: 0 4px 10px -5px #000a;
+    background: rgba(15, 23, 42, 0.8); 
+    color: var(--txt); text-decoration: none;
+    padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.2s;
+    font-family: var(--font-mono); text-transform: uppercase;
   }
-  .nav-buttons a:hover { background: var(--card); border-color: var(--blue); transform: translateY(-2px); }
-  .nav-buttons a.crono { border-left: 4px solid var(--amber); }
-  .nav-buttons a.lista { border-left: 4px solid var(--blue); }
-  .nav-buttons a.op-el { border-left: 4px solid #38bdf8; }
-  .nav-buttons a.op-mec { border-left: 4px solid #a855f7; }
+  .nav-buttons a:hover { 
+    background: rgba(56, 189, 248, 0.1); 
+    border-color: var(--cyan); 
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.2);
+  }
+  
+  .nav-buttons a.crono { border-left: 3px solid var(--amber); }
+  .nav-buttons a.lista { border-left: 3px solid var(--cyan); }
+  .nav-buttons a.op-el { border-left: 3px solid #3b82f6; }
+  .nav-buttons a.op-mec { border-left: 3px solid #8b5cf6; }
 
-  /* Status de Atualização */
+  /* --- STATUS DE ATUALIZAÇÃO --- */
   .status-box {
-    background: var(--card); border: 1px solid var(--ring); border-radius: 12px;
-    padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: center; align-items: center;
-    box-shadow: 0 4px 20px -10px #000a;
-    transition: opacity 0.4s ease;
+    background: rgba(0, 0, 0, 0.3); 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    border-radius: 8px;
+    padding: 14px 20px; margin-bottom: 32px; 
+    display: flex; justify-content: flex-start; align-items: center;
+    font-family: var(--font-mono); font-size: 0.85rem;
+    transition: opacity 0.4s ease, transform 0.4s ease;
   }
-  .status-box.hidden { opacity: 0; pointer-events: none; }
-  .status-box .msg { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .status-box .msg.success { color: var(--green); }
-  .status-box .msg.error { color: var(--red); }
-  .status-box .msg.loading { color: var(--amber); }
+  .status-box.hidden { opacity: 0; pointer-events: none; transform: translateY(-10px); position: absolute; }
+  .status-box .msg { display: flex; align-items: center; gap: 10px; }
+  .status-box .msg.success { color: #4ade80; }
+  .status-box .msg.error { color: #f87171; }
+  .status-box .msg.loading { color: var(--cyan); }
 
-  header { margin-bottom: 28px; }
-
+  /* --- CABEÇALHO --- */
+  header { margin-bottom: 32px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 20px; }
   header p.subtitle { 
-    color: var(--muted); 
-    font-size: 1.1rem; 
-    margin-top: 6px; 
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--txt); font-size: 1.6rem; margin-top: 8px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
   }
-
   .badge {
-    display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; color: #93c5fd; background: #1e3a8a55;
-    border: 1px solid #3b82f655; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--cyan); 
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.3); 
+    padding: 6px 12px; border-radius: 4px; margin-bottom: 12px;
+    font-family: var(--font-mono);
   }
 
-  /* Cartões Principais */
-  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  /* --- CARTÕES PRINCIPAIS (INDICADORES) --- */
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .card {
-    position: relative; background: linear-gradient(160deg, var(--card), var(--card2));
-    border: 1px solid var(--ring); border-radius: 16px; padding: 22px 22px 20px;
-    box-shadow: 0 10px 30px -12px #000a; overflow: hidden;
+    position: relative; 
+    background: var(--panel);
+    border: 1px solid var(--panel-border); 
+    border-radius: 12px; padding: 24px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
   }
-  .card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--accent); }
-  .card .label { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-  .card .value { font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
-  .card .sub { font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  
+  /* Efeito de scanline sutil no topo do cartão */
+  .card::after {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .card .label { 
+    font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; 
+    color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; 
+  }
+  
+  .card .value { 
+    font-family: var(--font-mono);
+    font-size: 3.5rem; font-weight: 800; line-height: 1; 
+    letter-spacing: -0.05em;
+    margin-bottom: 8px;
+  }
+  
+  .card .sub { font-size: .8rem; color: var(--muted); line-height: 1.4; }
   .card .sub b { color: var(--txt); }
 
-  .c1 { --accent: var(--blue); display: flex; flex-direction: column; justify-content: center; }
-  .c1 .label { margin-bottom: 8px; }
-  .c2 { --accent: var(--green); }
-  .c3 { --accent: var(--amber); }
-  .c4 { --accent: var(--red); }
+  /* Configurações de cores dos indicadores */
+  .c1 { --accent: var(--cyan); }
+  .c1 .value { color: #fff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
   
-  /* Animação do Piscante — alterna vermelho brilhante e lilás brilhante */
-  .c4 .value {
-    animation: blinkColors 1.4s ease-in-out infinite;
+  .c2 { --accent: var(--green); }
+  .c2 .value { color: var(--green); text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+  
+  .c3 { --accent: var(--amber); }
+  .c3 .value { color: var(--amber); text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+  
+  .c4 { --accent: var(--red); background: rgba(30, 15, 15, 0.6); border-color: rgba(239, 68, 68, 0.3); }
+  .c4 .value { animation: blinkColors 1.2s ease-in-out infinite; }
+  
+  .c4 .dot { 
+    width: 8px; height: 8px; border-radius: 50%; background: var(--red); 
+    box-shadow: 0 0 10px var(--red); animation: pulse 1.3s infinite; 
   }
-  .c4 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 #ef444488; animation: pulse 1.3s infinite; }
+  
+  /* Animação piscante para os críticos */
   @keyframes blinkColors {
     0%, 100% {
-      color: #ff1a1a;
-      text-shadow: 0 0 6px #ff1a1a, 0 0 14px #ff1a1a, 0 0 28px #ff000088;
+      color: #ff3333;
+      text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000;
       opacity: 1;
     }
     50% {
-      color: #c084fc; /* lilás brilhante */
-      text-shadow: 0 0 6px #c084fc, 0 0 14px #c084fc, 0 0 28px #a855f788;
-      opacity: .45;
+      color: #d8b4fe;
+      text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7;
+      opacity: 0.7;
     }
   }
-  @keyframes pulse { 0%{box-shadow:0 0 0 0 #ef444488} 70%{box-shadow:0 0 0 12px #ef444400} 100%{box-shadow:0 0 0 0 #ef444400} }
+  @keyframes pulse { 
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+  }
 
-  /* Tabela de contagem separada */
-  .totais-box { margin-top: 24px; background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 20px; }
-  .totais-box h3 { font-size: 1rem; margin-bottom: 16px; color: var(--txt); }
-  .totais-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+  /* --- TABELA DE CONTAGEM SEPARADA --- */
+  .totais-box { 
+    margin-top: 24px; 
+    background: var(--panel); 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    border-radius: 12px; 
+    padding: 24px; 
+  }
+  .totais-box h3 { 
+    font-size: 1rem; margin-bottom: 20px; color: var(--txt); 
+    font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .totais-box h3::before {
+    content: ">"; color: var(--cyan); font-weight: bold;
+  }
+  
+  .totais-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
   
   .total-item { 
-    background: var(--card2); padding: 16px 12px; border-radius: 8px; 
-    text-align: center; border: 1px solid var(--ring); 
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 16px; border-radius: 8px; 
+    border: 1px solid rgba(255, 255, 255, 0.03); 
+    display: flex; flex-direction: column;
     transition: all 0.2s;
   }
-  /* Clique apenas nos itens A1–A4 */
+  
+  /* Hover técnico */
   .total-item.clickable { cursor: pointer; }
   .total-item.clickable:hover {
-    border-color: var(--blue);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px -6px #3b82f688;
+    background: rgba(6, 182, 212, 0.08);
+    border-color: rgba(6, 182, 212, 0.3);
   }
-  .total-item span.k { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 6px; }
-  .total-item strong.v { font-size: 1.6rem; color: var(--txt); line-height: 1; margin-bottom: 8px; }
   
-  /* Subtextos informativos */
-  .total-item .details { font-size: 0.65rem; color: var(--muted); line-height: 1.3; }
-  .total-item .details b { color: #cbd5e1; font-weight: 600; }
+  .total-item span.k { 
+    font-size: 0.75rem; color: var(--muted); 
+    text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; margin-bottom: 8px; 
+  }
+  .total-item strong.v { 
+    font-family: var(--font-mono);
+    font-size: 1.8rem; color: var(--txt); line-height: 1; margin-bottom: 12px; 
+  }
+  
+  .total-item .details { 
+    font-size: 0.75rem; color: var(--muted); 
+    font-family: var(--font-mono); line-height: 1.5; 
+  }
+  .total-item .details b { color: var(--txt); }
+
+  /* Responsividade */
+  @media(max-width: 768px) {
+    body { padding: 20px 12px; }
+    .top-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .card .value { font-size: 2.8rem; }
+    .nav-buttons a { flex: 1 1 calc(50% - 12px); justify-content: center; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   
-  <!-- RELÓGIO NO TOPO DIREITO -->
+  <!-- TOPO: IDENTIFICAÇÃO DO SISTEMA E RELÓGIO -->
   <div class="top-bar">
+    <div class="sys-title">SYS.MONITOR // VIBRAÇÃO & TERMOGRAFIA</div>
     <div class="clock" id="currentDateTime">Carregando data e hora...</div>
   </div>
 
@@ -152,49 +261,50 @@
   <div class="nav-buttons">
     <a href="cronograma.html" class="crono">📅 Cronograma</a>
     <a href="lista.html" class="lista">📋 Lista Geral</a>
-    <a href="operacional-eletrico.html" class="op-el">⚡ Operacional Elétrico</a>
-    <a href="operacional-mecanico.html" class="op-mec">🔧 Operacional Mecânico</a>
+    <a href="operacional-eletrico.html" class="op-el">⚡ Op. Elétrico</a>
+    <a href="operacional-mecanico.html" class="op-mec">🔧 Op. Mecânico</a>
   </div>
 
-  <!-- STATUS (sem botão; desaparece automaticamente) -->
+  <!-- STATUS DE LEITURA -->
   <div class="status-box" id="statusBox">
     <div class="msg loading" id="statusMsg">
-      <span>⏳</span> Carregando dados da planilha...
+      <span>[LOAD]</span> Aguardando telemetria da planilha...
     </div>
   </div>
 
   <header>
-    <span class="badge">Termografia & Vibração · St-0 · ABA GERAL</span>
-    <p class="subtitle">DASHBOARD DE ALERTAS</p>
+    <span class="badge">Módulo: St-0 · Base: ABA GERAL</span>
+    <p class="subtitle">Painel de Análise Preditiva</p>
   </header>
 
   <section class="grid">
     <div class="card c1">
-      <div class="label">📋 Total de Registros (St-0)</div>
+      <div class="label">Total de Ativos Monitorados</div>
       <div class="value" id="v1">—</div>
+      <div class="sub">Registros St-0 válidos (N, A1-A4)</div>
     </div>
 
     <div class="card c2">
-      <div class="label">✅ Alertas Programados</div>
+      <div class="label">Alertas Programados</div>
       <div class="value" id="v2">—</div>
-      <div class="sub"><b>A1, A2, A3 e A4</b> com N. SAP preenchido</div>
+      <div class="sub"><b>A1, A2, A3, A4</b> com O.S. gerada (N. SAP)</div>
     </div>
 
     <div class="card c3">
-      <div class="label">⚠️ Alertas Não Programados</div>
+      <div class="label">Alertas Não Programados</div>
       <div class="value" id="v3">—</div>
-      <div class="sub"><b>A1 e A3</b> sem N. SAP</div>
+      <div class="sub"><b>A1 e A3</b> aguardando O.S. (Sem SAP)</div>
     </div>
 
     <div class="card c4">
-      <div class="label"><span class="dot"></span> CRÍTICOS SEM SAP</div>
+      <div class="label"><span class="dot"></span> Falhas Críticas (Sem SAP)</div>
       <div class="value" id="v4">—</div>
-      <div class="sub"><b>A2 (mecânico)</b> ou <b>A4 (elétrico)</b> sem SAP</div>
+      <div class="sub"><b>A2 (Mecânico)</b> ou <b>A4 (Elétrico)</b> descobertos</div>
     </div>
   </section>
 
   <div class="totais-box">
-    <h3>Contagem Separada (Categorias Válidas)</h3>
+    <h3>Telemetria por Categoria</h3>
     <div class="totais-grid" id="totaisGrid">
       <!-- Preenchido via JS -->
     </div>
@@ -229,19 +339,16 @@
     grid: document.getElementById('totaisGrid')
   };
 
-  // Rótulos amigáveis para a Contagem Separada
   const LABELS = {
-    N:  'N',
+    N:  'N (Normal)',
     A1: 'A1 (Mecânica)',
     A2: 'A2 (Mecânica)',
     A3: 'A3 (Thermo)',
     A4: 'A4 (Thermo)'
   };
 
-  // Categorias clicáveis (A1–A4)
   const CLICKABLE = ['A1', 'A2', 'A3', 'A4'];
 
-  // Esconde o status-box após um tempo
   let statusHideTimer = null;
   function scheduleHideStatus(ms = 3000) {
     if (statusHideTimer) clearTimeout(statusHideTimer);
@@ -298,17 +405,14 @@
         else stats[st0].semSap++;
       }
 
-      // Programados: A1, A2, A3 e A4 com SAP preenchido
       if ((st0 === 'A1' || st0 === 'A2' || st0 === 'A3' || st0 === 'A4') && sap !== '') {
         programados++;
       }
 
-      // Não Programados: A1 e A3 sem SAP
       if ((st0 === 'A1' || st0 === 'A3') && sap === '') {
         naoProgramados++;
       }
 
-      // Críticos sem SAP: A2 ou A4 sem SAP
       if ((st0 === 'A2' || st0 === 'A4') && sap === '') {
         criticos++;
       }
@@ -327,16 +431,15 @@
       div.className = 'total-item';
       let detailsHtml = '';
       if (key === 'N') {
-         detailsHtml = `<div class="details">Sem alerta</div>`;
+         detailsHtml = `<div class="details">Sem alertas gerados</div>`;
       } else {
-         detailsHtml = `<div class="details"><b>${dataObj.comSap}</b> Programados<br><b>${dataObj.semSap}</b> Não Programados</div>`;
+         detailsHtml = `<div class="details"><b>${dataObj.comSap}</b> Prog. / <b>${dataObj.semSap}</b> Não Prog.</div>`;
       }
       div.innerHTML = `<span class="k">${LABELS[key] || key}</span><strong class="v">${dataObj.total}</strong>${detailsHtml}`;
 
-      // Torna A1–A4 clicáveis -> abre lista.html?st0=<KEY>
       if (CLICKABLE.includes(key)) {
         div.classList.add('clickable');
-        div.title = `Ver todos os registros ${key} na Lista Geral`;
+        div.title = `Acessar Lista de Alarmes: ${key}`;
         div.addEventListener('click', () => {
           window.location.href = `lista.html?st0=${encodeURIComponent(key)}`;
         });
@@ -347,7 +450,7 @@
   }
 
   async function fetchData() {
-    showStatus('loading', "<span>⏳</span> Lendo planilha local...");
+    showStatus('loading', "[SYNC] Buscando arquivo Pasta1.xlsx...");
 
     try {
       const response = await fetch('./Pasta1.xlsx');
@@ -356,12 +459,12 @@
       const arrayBuffer = await response.arrayBuffer();
       processWorkbook(new Uint8Array(arrayBuffer));
       
-      showStatus('success', `<span>✅</span> Dados atualizados com sucesso!`);
+      showStatus('success', `[OK] Telemetria atualizada com sucesso.`);
       scheduleHideStatus(3000);
 
     } catch (error) {
       console.error(error);
-      showStatus('error', `<span>❌</span> Erro ao ler o arquivo Pasta1.xlsx.`);
+      showStatus('error', `[ERR] Falha ao ler Pasta1.xlsx.`);
       scheduleHideStatus(4000);
     }
   }
