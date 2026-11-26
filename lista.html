@@ -37,22 +37,24 @@
   .toolbar input,.toolbar select{padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem}
   .toolbar input{flex:1;min-width:150px}
 
-  /* Configuração da tabela com auto-ajuste */
   table.data{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06); font-size:11px; table-layout: auto;}
   table.data thead{background:var(--primary);color:#fff}
   table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap;}
   
-  /* Força a quebra de linha em textos longos e ajusta as células */
   table.data td{padding:.6rem .5rem; border-bottom:1px solid #f1f5f9; vertical-align:top; white-space: normal; word-break: break-word;}
   table.data tbody tr:hover{background:#f8fafc}
   table.data tbody tr:last-child{border-bottom:none}
 
-  /* Colunas de texto curto NÃO quebram linha (evita ficar esmagado) */
+  /* Impede quebra de linha nas colunas curtas */
   table.data th:not(.col-wide), table.data td:not(.col-wide) { white-space: nowrap; }
-  table.data td.tag-col { white-space: nowrap; }
   
-  /* Colunas de texto longo têm um tamanho mínimo garantido */
-  table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; }
+  /* Configuração para colunas longas (Diagnóstico e Recomendação) */
+  table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; white-space: normal; }
+  
+  /* --- CLASSE PARA OCULTAR A COLUNA ÁREA --- */
+  .hide-col {
+    display: none;
+  }
 
   .status{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
   .status.N{background:#dcfce7;color:var(--n)}.status.A1{background:#fef9c3;color:#a16207}
@@ -128,10 +130,19 @@
     <table class="data" id="tableGeral">
       <thead>
         <tr>
-          <th>Local</th><th>TAG</th><th>Insp.</th>
-          <th>St-2</th><th>St-1</th><th>St-0</th><th>Dta St-0</th>
-          <th class="col-wide">Diagnósticos</th><th class="col-wide">Recomendações</th>
-          <th>N.Relatório</th><th>N. SAP</th>
+          <!-- Cabeçalho completo com a coluna Área -->
+          <th class="hide-col">Área</th>
+          <th>Local</th>
+          <th>TAG</th>
+          <th>Insp.</th>
+          <th>St-2</th>
+          <th>St-1</th>
+          <th>St-0</th>
+          <th>Dta St-0</th>
+          <th class="col-wide">Diagnósticos</th>
+          <th class="col-wide">Recomendações</th>
+          <th>N.Relatório</th>
+          <th>N. SAP</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -144,7 +155,7 @@ function tick(){const n=new Date();document.getElementById('clock').textContent=
 setInterval(tick,1000);tick();
 
 const DB = { areas: [], diagnostico: {}, updatedAt: null };
-const LS_KEY = 'menuPreditivaSR_v31'; // Nova chave para limpar o cache bugado anterior
+const LS_KEY = 'menuPreditivaSR_v32'; // Chave atualizada para limpar cache bugado anterior
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
@@ -165,7 +176,7 @@ function extrairRelatorio(texto) {
   return match ? match[1] : '-';
 }
 
-// --- LEITURA BLINDADA POR ÍNDICE DE COLUNA (B até M) ---
+// --- LEITURA BLINDADA (ÍNDICE FIXO DA SUA IMAGEM) ---
 function parseWorkbookPreditiva(wb){
   DB.areas = []; DB.diagnostico = {};
   let totalImportados = 0;
@@ -177,7 +188,7 @@ function parseWorkbookPreditiva(wb){
 
     let headerIdx = -1;
     
-    // 1. Encontra a linha do cabeçalho procurando a palavra "TAG"
+    // Encontra o cabeçalho buscando a palavra "TAG"
     for(let i=0; i<Math.min(rows.length, 50); i++) {
         const rowStr = rows[i].map(norm).join(' ');
         if(rowStr.includes('TAG') || rowStr.includes('LOCAL')) {
@@ -190,41 +201,35 @@ function parseWorkbookPreditiva(wb){
       let areaNome = nameRaw.trim().toUpperCase();
       const out = [];
       
-      // 2. Lê linha por linha baseado na posição fixa da sua planilha (A=0, B=1, C=2...)
+      // Mapeamento EXATO por coluna (A=0, B=1, C=2...)
+      // Baseado na sua imagem do Excel:
+      // A=0 (Área Aba), B=1 (Área), C=2 (Local), D=3 (TAG), E=4 (Insp), 
+      // F=5 (St-2), G=6 (St-1), H=7 (St-0), I=8 (Dta St-0), 
+      // J=9 (Diagnósticos), K=10 (Recomendações), L=11 (N. Relatório), M=12 (SAP)
+      
       for(let r = headerIdx + 1; r < rows.length; r++){
         const row = rows[r]; 
         if(!row || row.length === 0) continue;
 
-        // Mapeamento direto pelo índice da coluna (garantido pela sua imagem)
-        // B: Local (Índice 1)
-        // C: TAG (Índice 2)
-        // D: Insp (Índice 3)
-        // E, F, G: St-2, St-1, St-0 (Índices 4, 5, 6)
-        // H: Dta St-0 (Índice 7)
-        // I: Diagnósticos (Índice 8)
-        // J: Recomendações (Índice 9)
-        // K: N. Relatório (Índice 10)
-        // L: SAP (Índice 11)
+        const local = cleanText(row[2]); // C
+        const tag   = cleanText(row[3]); // D
         
-        const local = cleanText(row[1]);
-        const tag   = cleanText(row[2]);
-        
-        // Se a linha estiver vazia tanto em Local quanto em TAG, ignora
         if(!local && !tag) continue; 
 
         out.push({
-          setor: areaNome,
-          local: local,
-          tag:   tag || 'S/TAG',
-          tipo:  cleanText(row[3]),
-          s2:    norm(row[4]),
-          s1:    norm(row[5]),
-          s0:    norm(row[6]),
-          data:  fmtDate(row[7]),
-          diag:  cleanText(row[8]), // Índice 8: Força a pegar a coluna I
-          rec:   cleanText(row[9]), // Índice 9: Força a pegar a coluna J
-          relatorioFixo: row[10],
-          sap:   cleanText(row[11])
+          areaAba: cleanText(row[0]),     // A
+          setor:   cleanText(row[1]),     // B
+          local:   local,                 // C
+          tag:     tag || 'S/TAG',        // D
+          tipo:    cleanText(row[4]),     // E
+          s2:      norm(row[5]),          // F
+          s1:      norm(row[6]),          // G
+          s0:      norm(row[7]),          // H
+          data:    fmtDate(row[8]),       // I
+          diag:    cleanText(row[9]),     // J
+          rec:     cleanText(row[10]),    // K
+          relatorioFixo: row[11],         // L
+          sap:     cleanText(row[12])     // M
         });
       }
       
@@ -249,7 +254,7 @@ function renderGeral(){
   const fStatus = document.getElementById('filterGeral').value;
   
   const filt = all.filter(x=>{
-    const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
+    const okQ = !q || [x.tag, x.diag, x.rec, x.local, x.setor].join(' ').toLowerCase().includes(q);
     const okLoc = !fLoc || x.local.toLowerCase().includes(fLoc);
     const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
     const okStatus = !fStatus || norm(x.s0)===fStatus;
@@ -261,8 +266,10 @@ function renderGeral(){
     let rel = x.relatorioFixo;
     if(!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
 
+    // A td da área está com a classe hide-col
     return `
     <tr>
+      <td class="hide-col">${esc(x.setor)}</td>
       <td>${esc(x.local)}</td>
       <td class="tag-col"><strong>${esc(x.tag)}</strong></td>
       <td>${esc(x.tipo)}</td>
@@ -274,7 +281,7 @@ function renderGeral(){
       <td class="col-wide">${esc(x.rec)}</td>
       <td>${esc(rel)}</td>
       <td>${esc(x.sap)}</td>
-    </tr>`}).join('') : `<tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado com os filtros atuais.</td></tr>`;
+    </tr>`}).join('') : `<tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado com os filtros atuais.</td></tr>`;
 }
 
 document.getElementById('searchGeral').addEventListener('input',renderGeral);
