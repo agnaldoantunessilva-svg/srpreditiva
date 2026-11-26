@@ -21,6 +21,11 @@
   
   .btn-upload{background:#fff;color:var(--primary);border:none;padding:.55rem 1rem;border-radius:8px;cursor:pointer;font-weight:700;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.2s;display:flex;align-items:center;gap:.4rem}
   .btn-upload:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
+  
+  /* Botão de impressão com cor de destaque */
+  .btn-print{background:#10b981;color:#fff;}
+  .btn-print:hover{background:#059669;}
+
   input[type="file"]{display:none}
 
   #statusBar{padding:.5rem 2rem;font-size:.85rem;background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047;display:none}
@@ -37,7 +42,6 @@
   .toolbar input,.toolbar select{padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem}
   .toolbar input{flex:1;min-width:150px}
 
-  /* Contador de registros */
   .contador-box {
     font-size: 0.9rem;
     font-weight: bold;
@@ -53,22 +57,16 @@
 
   table.data{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06); font-size:11px; table-layout: auto;}
   table.data thead{background:var(--primary);color:#fff}
-  table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap;}
+  table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap; border: 1px solid #cbd5e1; border-collapse: collapse;}
   
-  table.data td{padding:.6rem .5rem; border-bottom:1px solid #f1f5f9; vertical-align:top; white-space: normal; word-break: break-word;}
+  /* BORDAS FINAS NAS CÉLULAS */
+  table.data td{padding:.6rem .5rem; vertical-align:top; white-space: normal; word-break: break-word; border: 1px solid #cbd5e1;}
   table.data tbody tr:hover{background:#f8fafc}
-  table.data tbody tr:last-child{border-bottom:none}
-
-  /* Impede quebra de linha nas colunas curtas */
-  table.data th:not(.col-wide), table.data td:not(.col-wide) { white-space: nowrap; }
   
-  /* Configuração para colunas longas (Diagnóstico e Recomendação) */
+  table.data th:not(.col-wide), table.data td:not(.col-wide) { white-space: nowrap; }
   table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; white-space: normal; }
   
-  /* --- CLASSE PARA OCULTAR COLUNAS (Área e Insp.) --- */
-  .hide-col {
-    display: none !important;
-  }
+  .hide-col { display: none !important; }
 
   .status{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
   .status.N{background:#dcfce7;color:var(--n)}.status.A1{background:#fef9c3;color:#a16207}
@@ -84,6 +82,31 @@
     .toolbar{flex-direction:column; align-items:stretch}
     .toolbar input{width:100%}
   }
+
+  /* --- REGRAS DE IMPRESSÃO --- */
+  @media print {
+    /* Esconde tudo que não é tabela */
+    header, .toolbar, .contador-box, .btn-upload, .global-legend, #statusBar { display: none !important; }
+    
+    /* Tira a cor de fundo da página e ajusta as margens */
+    body { background: #fff; margin: 0; padding: 0; font-size: 10px; color: #000; }
+    main { padding: 0; max-width: 100%; }
+    h2 { display: none; }
+    
+    /* Força a impressão da coluna oculta (Área) no papel */
+    .hide-col { display: table-cell !important; }
+    
+    /* Garante que as bordas apareçam no papel */
+    table.data { border-collapse: collapse; width: 100%; border: 1px solid #000; }
+    table.data th, table.data td { border: 1px solid #000 !important; padding: 4px; color: #000; }
+    
+    /* Fundo branco no cabeçalho da tabela */
+    table.data thead { background: #fff; color: #000; }
+    table.data th { border-bottom: 2px solid #000 !important; }
+    
+    /* Remove cores de fundo de badges na impressão */
+    .status { border: 1px solid #000 !important; background: transparent !important; color: #000 !important; }
+  }
 </style>
 </head>
 <body>
@@ -97,6 +120,10 @@
 
   <div class="header-right">
     <div id="clock"></div>
+    
+    <!-- BOTÃO DE IMPRESSÃO -->
+    <button id="btnPrint" class="btn-upload btn-print">🖨️ Imprimir Tabela</button>
+    
     <button id="btnReload" class="btn-upload">🔄 Atualizar Página</button>
     <input type="file" id="fileInputDiag" accept=".xls,.xlsx">
   </div>
@@ -129,8 +156,13 @@
   
   <div class="toolbar" style="margin-top:1rem">
     <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, diagnóstico ou recomendação...">
-    <input type="text" id="filterLocal" placeholder="📍 Filtrar por Local...">
+    
+    <select id="filterArea">
+      <option value="">Todas as Áreas</option>
+    </select>
+    
     <input type="text" id="filterSap" placeholder="🔢 Filtrar por N. SAP...">
+    
     <select id="filterGeral">
       <option value="">Todos os status</option>
       <option value="N">Normal</option><option value="M">Manutenção</option>
@@ -140,7 +172,6 @@
     </select>
   </div>
 
-  <!-- Contador de registros -->
   <div class="contador-box" id="contadorRegistros">Mostrando 0 registros</div>
 
   <div style="overflow-x:auto">
@@ -150,7 +181,7 @@
           <th class="hide-col">Área</th>
           <th>Local</th>
           <th>TAG</th>
-          <th class="hide-col">Insp.</th> <!-- Ocultada via CSS -->
+          <th class="hide-col">Insp.</th>
           <th>St-2</th>
           <th>St-1</th>
           <th>St-0</th>
@@ -167,11 +198,13 @@
 </main>
 
 <script>
+// ... (O código JavaScript continua IDÊNTICO, apenas adicionarei o evento do botão de imprimir no final) ...
+
 function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('pt-BR')+' '+n.toLocaleTimeString('pt-BR');}
 setInterval(tick,1000);tick();
 
 const DB = { areas: [], diagnostico: {}, updatedAt: null };
-const LS_KEY = 'menuPreditivaSR_v33'; // Limpa caches antigos
+const LS_KEY = 'menuPreditivaSR_v36'; // Chave limpa
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
 function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
 
@@ -192,7 +225,6 @@ function extrairRelatorio(texto) {
   return match ? match[1] : '-';
 }
 
-// --- LEITURA BLINDADA (ÍNDICE FIXO DA SUA IMAGEM) ---
 function parseWorkbookPreditiva(wb){
   DB.areas = []; DB.diagnostico = {};
   let totalImportados = 0;
@@ -216,13 +248,12 @@ function parseWorkbookPreditiva(wb){
       let areaNome = nameRaw.trim().toUpperCase();
       const out = [];
       
-      // A=0, B=1, C=2(Local), D=3(TAG), E=4(Insp), F=5(St2), G=6(St1), H=7(St0), I=8(Dta), J=9(Diag), K=10(Rec), L=11(Rel), M=12(SAP)
       for(let r = headerIdx + 1; r < rows.length; r++){
         const row = rows[r]; 
         if(!row || row.length === 0) continue;
 
-        const local = cleanText(row[2]); // C
-        const tag   = cleanText(row[3]); // D
+        const local = cleanText(row[2]); 
+        const tag   = cleanText(row[3]); 
         
         if(!local && !tag) continue; 
 
@@ -231,15 +262,15 @@ function parseWorkbookPreditiva(wb){
           setor:   cleanText(row[1]),
           local:   local,
           tag:     tag || 'S/TAG',
-          tipo:    cleanText(row[4]),     // E
-          s2:      norm(row[5]),          // F
-          s1:      norm(row[6]),          // G
-          s0:      norm(row[7]),          // H
-          data:    fmtDate(row[8]),       // I
-          diag:    cleanText(row[9]),     // J
-          rec:     cleanText(row[10]),    // K
-          relatorioFixo: row[11],         // L
-          sap:     cleanText(row[12])     // M
+          tipo:    cleanText(row[4]),
+          s2:      norm(row[5]),
+          s1:      norm(row[6]),
+          s0:      norm(row[7]),
+          data:    fmtDate(row[8]),
+          diag:    cleanText(row[9]),
+          rec:     cleanText(row[10]),
+          relatorioFixo: row[11],
+          sap:     cleanText(row[12])
         });
       }
       
@@ -253,26 +284,51 @@ function parseWorkbookPreditiva(wb){
   DB.updatedAt = new Date().toISOString();
 }
 
+function atualizarListaSuspensaAreas() {
+  const select = document.getElementById('filterArea');
+  const valorAtual = select.value; 
+  select.innerHTML = '<option value="">Todas as Áreas</option>';
+  
+  const areasSet = new Set();
+  Object.values(DB.diagnostico).forEach(arr => {
+    arr.forEach(x => {
+      if(x.setor && x.setor.trim() !== '') {
+        areasSet.add(x.setor.trim());
+      }
+    });
+  });
+  
+  const areasOrdenadas = Array.from(areasSet).sort();
+  
+  areasOrdenadas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area;
+    opt.textContent = area;
+    select.appendChild(opt);
+  });
+  
+  select.value = valorAtual;
+}
+
 function renderGeral(){
   const tb = document.querySelector('#tableGeral tbody');
   const all = [];
   Object.entries(DB.diagnostico).forEach(([area,arr])=> arr.forEach(x=> all.push({...x, area})));
   
   const q = (document.getElementById('searchGeral').value||'').toLowerCase();
-  const fLoc = (document.getElementById('filterLocal').value||'').toLowerCase();
+  const fArea = document.getElementById('filterArea').value;
   const fSap = (document.getElementById('filterSap').value||'').toLowerCase();
   const fStatus = document.getElementById('filterGeral').value;
   
   const filt = all.filter(x=>{
-    const okQ = !q || [x.tag, x.diag, x.rec, x.local, x.setor].join(' ').toLowerCase().includes(q);
-    const okLoc = !fLoc || x.local.toLowerCase().includes(fLoc);
+    const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
+    const okArea = !fArea || x.setor.trim() === fArea;
     const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
     const okStatus = !fStatus || norm(x.s0)===fStatus;
     
-    return okQ && okLoc && okSap && okStatus;
+    return okQ && okArea && okSap && okStatus;
   });
 
-  // ATUALIZA O CONTADOR DE REGISTROS
   const elContador = document.getElementById('contadorRegistros');
   elContador.textContent = `Mostrando ${filt.length} registro(s)`;
 
@@ -280,13 +336,12 @@ function renderGeral(){
     let rel = x.relatorioFixo;
     if(!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
 
-    // A td de Área e Insp. estão com a classe hide-col
     return `
     <tr>
       <td class="hide-col">${esc(x.setor)}</td>
       <td>${esc(x.local)}</td>
       <td class="tag-col"><strong>${esc(x.tag)}</strong></td>
-      <td class="hide-col">${esc(x.tipo)}</td> <!-- Insp. oculta -->
+      <td class="hide-col">${esc(x.tipo)}</td>
       <td>${stBadge(x.s2)}</td>
       <td>${stBadge(x.s1)}</td>
       <td>${stBadge(x.s0)}</td>
@@ -299,7 +354,7 @@ function renderGeral(){
 }
 
 document.getElementById('searchGeral').addEventListener('input',renderGeral);
-document.getElementById('filterLocal').addEventListener('input',renderGeral);
+document.getElementById('filterArea').addEventListener('change',renderGeral);
 document.getElementById('filterSap').addEventListener('input',renderGeral);
 document.getElementById('filterGeral').addEventListener('change',renderGeral);
 
@@ -314,6 +369,11 @@ function setStatus(msg, tipo){
   statusBar.style.borderBottomColor = tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#fde047';
   if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
 }
+
+// BOTÃO DE IMPRESSÃO
+document.getElementById('btnPrint').addEventListener('click', () => {
+  window.print();
+});
 
 document.getElementById('btnReload').addEventListener('click', async ()=>{
   setStatus('⏳ Buscando dados atualizados no servidor...');
@@ -338,6 +398,7 @@ fileInputDiag.addEventListener('change', async (e)=>{
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
+    atualizarListaSuspensaAreas();
     renderGeral();
     setStatus(`✅ Planilha processada com sucesso!`, 'ok');
   }catch(err){
@@ -355,6 +416,7 @@ async function carregarArquivoAutomatico(){
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
+    atualizarListaSuspensaAreas();
     renderGeral();
     setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
     return true;
@@ -366,7 +428,10 @@ async function carregarArquivoAutomatico(){
 
 (async function init(){
   const temLocal = loadLocal();
-  if(temLocal) renderGeral();
+  if(temLocal) {
+    atualizarListaSuspensaAreas();
+    renderGeral();
+  }
   
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
