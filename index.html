@@ -49,18 +49,15 @@
   /* Status de Atualização */
   .status-box {
     background: var(--card); border: 1px solid var(--ring); border-radius: 12px;
-    padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: center; align-items: center;
     box-shadow: 0 4px 20px -10px #000a;
+    transition: opacity 0.4s ease;
   }
+  .status-box.hidden { opacity: 0; pointer-events: none; }
   .status-box .msg { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
   .status-box .msg.success { color: var(--green); }
   .status-box .msg.error { color: var(--red); }
   .status-box .msg.loading { color: var(--amber); }
-  .status-box button {
-    background: var(--blue); color: white; border: none; padding: 8px 16px;
-    border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
-  }
-  .status-box button:hover { background: #2563eb; }
 
   header { margin-bottom: 28px; }
 
@@ -126,6 +123,14 @@
     background: var(--card2); padding: 16px 12px; border-radius: 8px; 
     text-align: center; border: 1px solid var(--ring); 
     display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  /* Clique apenas nos itens A1–A4 */
+  .total-item.clickable { cursor: pointer; }
+  .total-item.clickable:hover {
+    border-color: var(--blue);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -6px #3b82f688;
   }
   .total-item span.k { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 6px; }
   .total-item strong.v { font-size: 1.6rem; color: var(--txt); line-height: 1; margin-bottom: 8px; }
@@ -151,11 +156,11 @@
     <a href="operacional-mecanico.html" class="op-mec">🔧 Operacional Mecânico</a>
   </div>
 
-  <div class="status-box">
+  <!-- STATUS (sem botão; desaparece automaticamente) -->
+  <div class="status-box" id="statusBox">
     <div class="msg loading" id="statusMsg">
       <span>⏳</span> Carregando dados da planilha...
     </div>
-    <button onclick="fetchData()">🔄 Atualizar Agora</button>
   </div>
 
   <header>
@@ -203,22 +208,19 @@
     const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
     
-    // Formata a data e hora (ex: "terça-feira, 24 de novembro de 2026 - 23:16:00")
     const dateStr = now.toLocaleDateString('pt-BR', optionsDate);
     const timeStr = now.toLocaleTimeString('pt-BR', optionsTime);
-    
-    // Deixa a primeira letra da data maiúscula
     const dateFinal = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
     
     document.getElementById('currentDateTime').textContent = `${dateFinal} - ${timeStr}`;
   }
   
-  // Atualiza imediatamente e depois a cada 1 segundo
   updateClock();
   setInterval(updateClock, 1000);
 
   // --- LÓGICA DO DASHBOARD ---
   const els = {
+    statusBox: document.getElementById('statusBox'),
     statusMsg: document.getElementById('statusMsg'),
     v1: document.getElementById('v1'),
     v2: document.getElementById('v2'),
@@ -235,6 +237,24 @@
     A3: 'A3 (Thermo)',
     A4: 'A4 (Thermo)'
   };
+
+  // Categorias clicáveis (A1–A4)
+  const CLICKABLE = ['A1', 'A2', 'A3', 'A4'];
+
+  // Esconde o status-box após um tempo
+  let statusHideTimer = null;
+  function scheduleHideStatus(ms = 3000) {
+    if (statusHideTimer) clearTimeout(statusHideTimer);
+    statusHideTimer = setTimeout(() => {
+      els.statusBox.classList.add('hidden');
+    }, ms);
+  }
+
+  function showStatus(className, html) {
+    els.statusBox.classList.remove('hidden');
+    els.statusMsg.className = "msg " + className;
+    els.statusMsg.innerHTML = html;
+  }
 
   function processWorkbook(data) {
     const workbook = XLSX.read(data, { type: 'array' });
@@ -278,12 +298,12 @@
         else stats[st0].semSap++;
       }
 
-      // Programados: A1, A2, A3 e A4 com N. SAP preenchido
+      // Programados: A1, A2, A3 e A4 com SAP preenchido
       if ((st0 === 'A1' || st0 === 'A2' || st0 === 'A3' || st0 === 'A4') && sap !== '') {
         programados++;
       }
 
-      // Não Programados: A1 e A3 sem SAP (regra mantida)
+      // Não Programados: A1 e A3 sem SAP
       if ((st0 === 'A1' || st0 === 'A3') && sap === '') {
         naoProgramados++;
       }
@@ -312,13 +332,22 @@
          detailsHtml = `<div class="details"><b>${dataObj.comSap}</b> Programados<br><b>${dataObj.semSap}</b> Não Programados</div>`;
       }
       div.innerHTML = `<span class="k">${LABELS[key] || key}</span><strong class="v">${dataObj.total}</strong>${detailsHtml}`;
+
+      // Torna A1–A4 clicáveis -> abre lista.html?st0=<KEY>
+      if (CLICKABLE.includes(key)) {
+        div.classList.add('clickable');
+        div.title = `Ver todos os registros ${key} na Lista Geral`;
+        div.addEventListener('click', () => {
+          window.location.href = `lista.html?st0=${encodeURIComponent(key)}`;
+        });
+      }
+
       els.grid.appendChild(div);
     }
   }
 
   async function fetchData() {
-    els.statusMsg.className = "msg loading";
-    els.statusMsg.innerHTML = "<span>⏳</span> Lendo planilha local...";
+    showStatus('loading', "<span>⏳</span> Lendo planilha local...");
 
     try {
       const response = await fetch('./Pasta1.xlsx');
@@ -327,13 +356,13 @@
       const arrayBuffer = await response.arrayBuffer();
       processWorkbook(new Uint8Array(arrayBuffer));
       
-      els.statusMsg.className = "msg success";
-      els.statusMsg.innerHTML = `<span>✅</span> Dados atualizados com sucesso!`;
+      showStatus('success', `<span>✅</span> Dados atualizados com sucesso!`);
+      scheduleHideStatus(3000);
 
     } catch (error) {
       console.error(error);
-      els.statusMsg.className = "msg error";
-      els.statusMsg.innerHTML = `<span>❌</span> Erro ao ler o arquivo Pasta1.xlsx.`;
+      showStatus('error', `<span>❌</span> Erro ao ler o arquivo Pasta1.xlsx.`);
+      scheduleHideStatus(4000);
     }
   }
 
