@@ -43,6 +43,8 @@
   .nav-buttons a:hover { background: var(--card); border-color: var(--blue); transform: translateY(-2px); }
   .nav-buttons a.crono { border-left: 4px solid var(--amber); }
   .nav-buttons a.lista { border-left: 4px solid var(--blue); }
+  .nav-buttons a.op-el { border-left: 4px solid #38bdf8; }
+  .nav-buttons a.op-mec { border-left: 4px solid #a855f7; }
 
   /* Status de Atualização */
   .status-box {
@@ -143,8 +145,10 @@
 
   <!-- BOTÕES DE ACESSO RÁPIDO -->
   <div class="nav-buttons">
-    <a href="cronograma.html" class="crono">📅 Acessar Cronograma</a>
-    <a href="lista.html" class="lista">📋 Acessar Lista Geral</a>
+    <a href="cronograma.html" class="crono">📅 Cronograma</a>
+    <a href="lista.html" class="lista">📋 Lista Geral</a>
+    <a href="operacional-eletrico.html" class="op-el">⚡ Operacional Elétrico</a>
+    <a href="operacional-mecanico.html" class="op-mec">🔧 Operacional Mecânico</a>
   </div>
 
   <div class="status-box">
@@ -168,7 +172,7 @@
     <div class="card c2">
       <div class="label">✅ Alertas Programados</div>
       <div class="value" id="v2">—</div>
-      <div class="sub"><b>A1 e A3</b> com N. SAP preenchido</div>
+      <div class="sub"><b>A1, A2, A3 e A4</b> com N. SAP preenchido</div>
     </div>
 
     <div class="card c3">
@@ -274,11 +278,17 @@
         else stats[st0].semSap++;
       }
 
-      if (st0 === 'A1' || st0 === 'A3') {
-        if (sap !== '') programados++;
-        else naoProgramados++;
+      // Programados: A1, A2, A3 e A4 com N. SAP preenchido
+      if ((st0 === 'A1' || st0 === 'A2' || st0 === 'A3' || st0 === 'A4') && sap !== '') {
+        programados++;
       }
 
+      // Não Programados: A1 e A3 sem SAP (regra mantida)
+      if ((st0 === 'A1' || st0 === 'A3') && sap === '') {
+        naoProgramados++;
+      }
+
+      // Críticos sem SAP: A2 ou A4 sem SAP
       if ((st0 === 'A2' || st0 === 'A4') && sap === '') {
         criticos++;
       }
