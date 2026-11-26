@@ -21,8 +21,6 @@
   
   .btn-upload{background:#fff;color:var(--primary);border:none;padding:.55rem 1rem;border-radius:8px;cursor:pointer;font-weight:700;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.2s;display:flex;align-items:center;gap:.4rem}
   .btn-upload:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3)}
-  
-  /* Botão de impressão com cor de destaque */
   .btn-print{background:#10b981;color:#fff;}
   .btn-print:hover{background:#059669;}
 
@@ -36,7 +34,6 @@
   .legend-title{font-weight:700; color:var(--primary-dark)}
   .legend-item{display:flex; align-items:center; gap:.25rem}
 
-  /* Faixa de filtro vindo da URL */
   #filtroUrlBar{
     display:none; padding:.6rem 2rem; font-size:.9rem; font-weight:600;
     background:#dbeafe; color:#1e3a8a; border-bottom:1px solid #93c5fd;
@@ -56,29 +53,19 @@
   .toolbar input{flex:1;min-width:150px}
 
   .contador-box {
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: var(--primary-dark);
-    background: #e2e8f0;
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    display: inline-block;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.9rem; font-weight: bold; color: var(--primary-dark);
+    background: #e2e8f0; padding: 0.4rem 0.8rem; border-radius: 6px;
+    display: inline-block; margin-top: 1rem; margin-bottom: 0.5rem;
     border-left: 4px solid var(--primary);
   }
 
   table.data{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06); font-size:11px; table-layout: auto;}
   table.data thead{background:var(--primary);color:#fff}
   table.data th{padding:.6rem .4rem;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em; white-space: nowrap; border: 1px solid #cbd5e1; border-collapse: collapse;}
-  
-  /* BORDAS FINAS NAS CÉLULAS */
   table.data td{padding:.6rem .5rem; vertical-align:top; white-space: normal; word-break: break-word; border: 1px solid #cbd5e1;}
   table.data tbody tr:hover{background:#f8fafc}
-  
   table.data th:not(.col-wide), table.data td:not(.col-wide) { white-space: nowrap; }
   table.data th.col-wide, table.data td.col-wide { min-width: 250px; width: 30%; white-space: normal; }
-  
   .hide-col { display: none !important; }
 
   .status{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
@@ -96,7 +83,6 @@
     .toolbar input{width:100%}
   }
 
-  /* --- REGRAS DE IMPRESSÃO --- */
   @media print {
     header, .toolbar, .contador-box, .btn-upload, .global-legend, #statusBar, #filtroUrlBar { display: none !important; }
     body { background: #fff; margin: 0; padding: 0; font-size: 10px; color: #000; }
@@ -119,20 +105,15 @@
     <div class="logo-box"><img src="sr.png" alt="SR Soluções" onerror="this.style.display='none'"></div>
     <h1>🔧 Preditiva SR <span class="badge">Montenegro RS</span></h1>
   </div>
-
   <div class="header-right">
     <div id="clock"></div>
-    
-    <!-- BOTÃO DE IMPRESSÃO -->
     <button id="btnPrint" class="btn-upload btn-print">🖨️ Imprimir Tabela</button>
-    
     <button id="btnReload" class="btn-upload">🔄 Atualizar Página</button>
     <input type="file" id="fileInputDiag" accept=".xls,.xlsx">
   </div>
 </header>
 <div id="statusBar"></div>
 
-<!-- Faixa de filtro vindo do index.html (?st0=A1) -->
 <div id="filtroUrlBar">
   <span id="filtroUrlTxt"></span>
   <button class="btn-clear" id="btnLimparFiltroUrl">✕ Ver todos os registros</button>
@@ -161,16 +142,12 @@
 
 <main>
   <h2>Lista Geral de Ativos</h2>
-  
   <div class="toolbar" style="margin-top:1rem">
     <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, diagnóstico ou recomendação...">
-    
     <select id="filterArea">
       <option value="">Todas as Áreas</option>
     </select>
-    
     <input type="text" id="filterSap" placeholder="🔢 Filtrar por N. SAP...">
-    
     <select id="filterGeral">
       <option value="">Todos os status</option>
       <option value="N">Normal</option><option value="M">Manutenção</option>
@@ -179,9 +156,7 @@
       <option value="A3">A3 - Alerta inicial</option><option value="A4">A4 - Crítico</option>
     </select>
   </div>
-
   <div class="contador-box" id="contadorRegistros">Mostrando 0 registros</div>
-
   <div style="overflow-x:auto">
     <table class="data" id="tableGeral">
       <thead>
@@ -241,7 +216,6 @@ function parseWorkbookPreditiva(wb){
     if(!rows || rows.length === 0) return;
 
     let headerIdx = -1;
-    
     for(let i=0; i<Math.min(rows.length, 50); i++) {
         const rowStr = rows[i].map(norm).join(' ');
         if(rowStr.includes('TAG') || rowStr.includes('LOCAL')) {
@@ -340,7 +314,6 @@ function aplicarFiltroUrl() {
 }
 
 document.getElementById('btnLimparFiltroUrl').addEventListener('click', () => {
-  // Remove o parâmetro ?st0=... da URL e recarrega
   const url = new URL(window.location.href);
   url.searchParams.delete('st0');
   window.location.href = url.toString();
@@ -362,12 +335,10 @@ function renderGeral(){
     const okArea = !fArea || x.setor.trim() === fArea;
     const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
     const okStatus = !fStatus || norm(x.s0)===fStatus;
-    
     return okQ && okArea && okSap && okStatus;
   });
 
-  const elContador = document.getElementById('contadorRegistros');
-  elContador.textContent = `Mostrando ${filt.length} registro(s)`;
+  document.getElementById('contadorRegistros').textContent = `Mostrando ${filt.length} registro(s)`;
 
   tb.innerHTML = filt.length ? filt.map(x=>{
     let rel = x.relatorioFixo;
@@ -407,26 +378,17 @@ function setStatus(msg, tipo){
   if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
 }
 
-// BOTÃO DE IMPRESSÃO
-document.getElementById('btnPrint').addEventListener('click', () => {
-  window.print();
-});
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
 
 document.getElementById('btnReload').addEventListener('click', async ()=>{
   setStatus('⏳ Buscando dados atualizados no servidor...');
   const btn = document.getElementById('btnReload');
   btn.innerHTML = '⏳ Carregando...';
-  
   const carregou = await carregarArquivoAutomatico();
-  
   btn.innerHTML = '🔄 Atualizar Página';
-  
-  if(!carregou) {
-    setStatus('❌ Não foi possível baixar os dados. Verifique sua conexão.', 'error');
-  }
+  if(!carregou) setStatus('❌ Não foi possível baixar os dados. Verifique sua conexão.', 'error');
 });
 
-document.getElementById('btnUploadDiag').addEventListener('click', () => fileInputDiag.click());
 fileInputDiag.addEventListener('change', async (e)=>{
   const f = e.target.files[0]; if(!f) return;
   setStatus(`⏳ Lendo planilha: "${f.name}"...`);
@@ -436,6 +398,7 @@ fileInputDiag.addEventListener('change', async (e)=>{
     parseWorkbookPreditiva(wb);
     saveLocal();
     atualizarListaSuspensaAreas();
+    aplicarFiltroUrl();
     renderGeral();
     setStatus(`✅ Planilha processada com sucesso!`, 'ok');
   }catch(err){
@@ -444,74 +407,63 @@ fileInputDiag.addEventListener('change', async (e)=>{
   fileInputDiag.value='';
 });
 
+// Função principal de carga
 async function carregarArquivoAutomatico(){
-  const nomeArquivo = 'Pasta1.xlsx';
+  const nomeArquivo = './Pasta1.xlsx';
   try{
     const resp = await fetch(`${nomeArquivo}?t=${new Date().getTime()}`, { cache: 'no-store' });
-    if(!resp.ok) throw new Error(`Arquivo não encontrado`);
+    if(!resp.ok) throw new Error(`Arquivo não encontrado (Status ${resp.status})`);
     const buf = await resp.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
     atualizarListaSuspensaAreas();
+    aplicarFiltroUrl();
     renderGeral();
     setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
     return true;
   }catch(e){
-    console.warn("Falha na carga:", e.message);
+    console.error("Falha na carga:", e.message);
+    setStatus(`❌ Erro: ${e.message}. Verifique se o arquivo Pasta1.xlsx está na mesma pasta.`, 'error');
     return false;
   }
 }
 
-// ---------- ATUALIZAÇÃO AUTOMÁTICA A CADA 60s ----------
+// Auto-refresh
 let autoRefreshTimer = null;
 function iniciarAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = setInterval(async () => {
-    // Recarrega os dados do servidor e re-renderiza, sem perder filtros/scroll
-    const ok = await carregarArquivoAutomaticoSilencioso();
-    if (ok) {
-      // mantém filtro da URL ativo
-      aplicarFiltroUrl();
-      renderGeral();
-      console.log('[auto-refresh] Dados atualizados automaticamente:', new Date().toLocaleTimeString('pt-BR'));
-    }
-  }, 60000); // 60 segundos
+    try{
+      const resp = await fetch(`./Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
+      if(resp.ok){
+        const buf = await resp.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array', cellDates:true});
+        parseWorkbookPreditiva(wb);
+        atualizarListaSuspensaAreas();
+        aplicarFiltroUrl();
+        renderGeral();
+      }
+    }catch(e){}
+  }, 60000);
 }
 
-// Versão silenciosa (não mostra status na tela, para não incomodar)
-async function carregarArquivoAutomaticoSilencioso(){
-  try{
-    const resp = await fetch(`Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
-    if(!resp.ok) throw new Error('Arquivo não encontrado');
-    const buf = await resp.arrayBuffer();
-    const wb = XLSX.read(buf, {type:'array', cellDates:true});
-    parseWorkbookPreditiva(wb);
-    saveLocal();
-    atualizarListaSuspensaAreas();
-    return true;
-  }catch(e){
-    console.warn('[auto-refresh] falha:', e.message);
-    return false;
-  }
-}
-
+// INICIALIZAÇÃO
 (async function init(){
-  const temLocal = loadLocal();
-  if(temLocal) {
+  // 1. Aplica o filtro visual imediatamente
+  aplicarFiltroUrl();
+  
+  // 2. Renderiza o cache se existir
+  if(loadLocal()) {
     atualizarListaSuspensaAreas();
-    aplicarFiltroUrl();  // aplica filtro da URL ANTES de renderizar
     renderGeral();
   }
   
+  // 3. Busca os dados frescos do servidor
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
   
-  // Reaplica o filtro da URL após a carga assíncrona (se houver)
-  aplicarFiltroUrl();
-  renderGeral();
-  
-  // Inicia atualização automática
+  // 4. Inicia timer de auto-refresh
   iniciarAutoRefresh();
 })();
 </script>
