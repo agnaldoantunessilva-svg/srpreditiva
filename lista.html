@@ -182,4 +182,358 @@
     <div id="clock"></div>
     <button id="btnPrint" class="btn-upload btn-print">🖨️ Imprimir</button>
     <button id="btnReload" class="btn-upload">🔄 Atualizar</button>
-    <input type="file"
+    <input type="file" id="fileInputDiag" accept=".xls,.xlsx">
+  </div>
+</header>
+<div id="statusBar"></div>
+
+<div id="filtroUrlBar">
+  <span id="filtroUrlTxt"></span>
+  <button class="btn-clear" id="btnLimparFiltroUrl">✕ Ver todos os registros</button>
+</div>
+
+<div class="global-legend">
+  <div class="legend-group">
+    <span class="legend-title">Mecânica:</span>
+    <div class="legend-item"><span class="status N">N</span> Normal</div>
+    <div class="legend-item"><span class="status M">M</span> Em manut.</div>
+    <div class="legend-item"><span class="status NM">NM</span> Não medido</div>
+    <div class="legend-item"><span class="status P">P</span> Parado</div>
+    <div class="legend-item"><span class="status A1">A1</span> Alerta inicial</div>
+    <div class="legend-item"><span class="status A2">A2</span> Crítico</div>
+  </div>
+  <div class="legend-group">
+    <span class="legend-title">Elétrica:</span>
+    <div class="legend-item"><span class="status N">N</span> Normal</div>
+    <div class="legend-item"><span class="status M">M</span> Em manut.</div>
+    <div class="legend-item"><span class="status NM">NM</span> Não medido</div>
+    <div class="legend-item"><span class="status P">P</span> Parado</div>
+    <div class="legend-item"><span class="status A3">A3</span> Alerta inicial</div>
+    <div class="legend-item"><span class="status A4">A4</span> Crítico</div>
+  </div>
+</div>
+
+<main>
+  <h2>Lista geral de Alarmes</h2> <!-- TEXTO ALTERADO AQUI -->
+  
+  <div class="toolbar" style="margin-top:1rem">
+    <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, diagnóstico ou recomendação...">
+    <select id="filterArea">
+      <option value="">Todas as Áreas</option>
+    </select>
+    <input type="text" id="filterSap" placeholder="🔢 Filtrar por N. SAP...">
+    <select id="filterGeral">
+      <option value="">Todos os status</option>
+      <option value="N">Normal</option><option value="M">Manutenção</option>
+      <option value="NM">Não Medido</option><option value="P">Parado</option>
+      <option value="A1">A1 - Alerta inicial</option><option value="A2">A2 - Crítico</option>
+      <option value="A3">A3 - Alerta inicial</option><option value="A4">A4 - Crítico</option>
+    </select>
+  </div>
+  <div class="contador-box" id="contadorRegistros">Mostrando 0 registros</div>
+  <div style="overflow-x:auto">
+    <table class="data" id="tableGeral">
+      <thead>
+        <tr>
+          <th class="hide-col">Área</th>
+          <th>Local</th>
+          <th class="col-tag">TAG</th> <!-- CLASSE ADICIONADA -->
+          <th class="hide-col">Insp.</th>
+          <th>St-2</th>
+          <th>St-1</th>
+          <th>St-0</th>
+          <th>Dta St-0</th>
+          <th class="col-wide">Diagnósticos</th>
+          <th class="col-wide">Recomendações</th>
+          <th>N.Relatório</th>
+          <th>N. SAP</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleDateString('pt-BR')+' '+n.toLocaleTimeString('pt-BR');}
+setInterval(tick,1000);tick();
+
+const DB = { areas: [], diagnostico: {}, updatedAt: null };
+const LS_KEY = 'menuPreditivaSR_v36';
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){} }
+function loadLocal(){ try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return false; Object.assign(DB, JSON.parse(raw)); return true; }catch(e){ return false; } }
+
+function norm(s){ 
+  return (s||'').toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/gi, '')
+    .toUpperCase(); 
+}
+
+function cleanText(s) { if(!s) return ''; return String(s).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function fmtDate(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(v instanceof Date) return v.toLocaleDateString('pt-BR');
+  const d = new Date(v);
+  if(!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+  return String(v);
+}
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function stBadge(s){ const v=norm(s); if(!v) return ''; return `<span class="status ${esc(v)}">${esc(v)}</span>`; }
+function extrairRelatorio(texto) {
+  if(!texto) return '-';
+  const match = String(texto).match(/(?:RELATÓRIO|RELATORIO|OS|R.O|REL\.)\s*[:#]?\s*([0-9]+[\/\-\.]?[0-9]*)/i);
+  return match ? match[1] : '-';
+}
+
+function parseWorkbookPreditiva(wb){
+  DB.areas = []; DB.diagnostico = {};
+  let totalImportados = 0;
+
+  wb.SheetNames.forEach(nameRaw=>{
+    const ws = wb.Sheets[nameRaw];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', blankrows:false, raw:false});
+    if(!rows || rows.length === 0) return;
+
+    let headerIdx = -1;
+    for(let i=0; i<Math.min(rows.length, 50); i++) {
+        const rowStr = rows[i].map(norm).join(' ');
+        if(rowStr.includes('TAG') || rowStr.includes('LOCAL')) {
+            headerIdx = i; 
+            break;
+        }
+    }
+
+    if(headerIdx >= 0) {
+      let areaNome = nameRaw.trim().toUpperCase();
+      const out = [];
+      
+      for(let r = headerIdx + 1; r < rows.length; r++){
+        const row = rows[r]; 
+        if(!row || row.length === 0) continue;
+
+        const local = cleanText(row[2]); 
+        const tag   = cleanText(row[3]); 
+        
+        if(!local && !tag) continue; 
+
+        out.push({
+          areaAba: cleanText(row[0]),
+          setor:   cleanText(row[1]),
+          local:   local,
+          tag:     tag || 'S/TAG',
+          tipo:    cleanText(row[4]),
+          s2:      norm(row[5]),
+          s1:      norm(row[6]),
+          s0:      norm(row[7]),
+          data:    fmtDate(row[8]),
+          diag:    cleanText(row[9]),
+          rec:     cleanText(row[10]),
+          relatorioFixo: row[11],
+          sap:     cleanText(row[12])
+        });
+      }
+      
+      if(out.length > 0) {
+          DB.diagnostico[areaNome] = out;
+          totalImportados += out.length;
+      }
+    }
+  });
+
+  DB.updatedAt = new Date().toISOString();
+}
+
+function atualizarListaSuspensaAreas() {
+  const select = document.getElementById('filterArea');
+  const valorAtual = select.value; 
+  select.innerHTML = '<option value="">Todas as Áreas</option>';
+  
+  const areasSet = new Set();
+  Object.values(DB.diagnostico).forEach(arr => {
+    arr.forEach(x => {
+      if(x.setor && x.setor.trim() !== '') {
+        areasSet.add(x.setor.trim());
+      }
+    });
+  });
+  
+  const areasOrdenadas = Array.from(areasSet).sort();
+  
+  areasOrdenadas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area;
+    opt.textContent = area;
+    select.appendChild(opt);
+  });
+  
+  select.value = valorAtual;
+}
+
+function getSt0FromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const v = norm(params.get('st0'));
+  return ['A1','A2','A3','A4','N','M','NM','P'].includes(v) ? v : '';
+}
+
+function aplicarFiltroUrl() {
+  const st0 = getSt0FromUrl();
+  const bar = document.getElementById('filtroUrlBar');
+  const txt = document.getElementById('filtroUrlTxt');
+  const select = document.getElementById('filterGeral');
+
+  if (st0) {
+    select.value = st0;
+    txt.innerHTML = `🔎 Filtro ativo vindo do Dashboard: <b>St-0 = ${esc(st0)}</b> — exibindo apenas registros com este status.`;
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+    txt.textContent = '';
+  }
+}
+
+document.getElementById('btnLimparFiltroUrl').addEventListener('click', () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('st0');
+  window.location.href = url.toString();
+});
+
+function renderGeral(){
+  const tb = document.querySelector('#tableGeral tbody');
+  const all = [];
+  Object.entries(DB.diagnostico).forEach(([area,arr])=> arr.forEach(x=> all.push({...x, area})));
+  
+  const q = (document.getElementById('searchGeral').value||'').toLowerCase();
+  const fArea = document.getElementById('filterArea').value;
+  const fSap = (document.getElementById('filterSap').value||'').toLowerCase();
+  const fStatus = norm(document.getElementById('filterGeral').value);
+  
+  const filt = all.filter(x=>{
+    const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
+    const okArea = !fArea || x.setor.trim() === fArea;
+    const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
+    const okStatus = !fStatus || norm(x.s0) === fStatus;
+    return okQ && okArea && okSap && okStatus;
+  });
+
+  document.getElementById('contadorRegistros').textContent = `Mostrando ${filt.length} registro(s)`;
+
+  tb.innerHTML = filt.length ? filt.map(x=>{
+    let rel = x.relatorioFixo;
+    if(!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
+
+    return `
+    <tr>
+      <td class="hide-col">${esc(x.setor)}</td>
+      <td>${esc(x.local)}</td>
+      <td class="col-tag"><strong>${esc(x.tag)}</strong></td> <!-- CLASSE ADICIONADA AQUI TAMBÉM -->
+      <td class="hide-col">${esc(x.tipo)}</td>
+      <td>${stBadge(x.s2)}</td>
+      <td>${stBadge(x.s1)}</td>
+      <td>${stBadge(x.s0)}</td>
+      <td>${esc(x.data)}</td>
+      <td class="col-wide">${esc(x.diag)}</td>
+      <td class="col-wide">${esc(x.rec)}</td>
+      <td>${esc(rel)}</td>
+      <td>${esc(x.sap)}</td>
+    </tr>`}).join('') : `<tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado com os filtros atuais.</td></tr>`;
+}
+
+document.getElementById('searchGeral').addEventListener('input',renderGeral);
+document.getElementById('filterArea').addEventListener('change',renderGeral);
+document.getElementById('filterSap').addEventListener('input',renderGeral);
+document.getElementById('filterGeral').addEventListener('change',renderGeral);
+
+const fileInputDiag = document.getElementById('fileInputDiag');
+const statusBar = document.getElementById('statusBar');
+
+function setStatus(msg, tipo){
+  statusBar.textContent = msg;
+  statusBar.className = 'show';
+  statusBar.style.background = tipo==='error'?'#fee2e2':tipo==='ok'?'#dcfce7':'#fef9c3';
+  statusBar.style.color = tipo==='error'?'#991b1b':tipo==='ok'?'#166534':'#854d0e';
+  statusBar.style.borderBottomColor = tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#fde047';
+  if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
+}
+
+document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+document.getElementById('btnReload').addEventListener('click', async ()=>{
+  setStatus('⏳ Buscando dados atualizados no servidor...');
+  const btn = document.getElementById('btnReload');
+  btn.innerHTML = '⏳ Carregando...';
+  const carregou = await carregarArquivoAutomatico();
+  btn.innerHTML = '🔄 Atualizar Página';
+  if(!carregou) setStatus('❌ Não foi possível baixar os dados. Verifique sua conexão.', 'error');
+});
+
+fileInputDiag.addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  setStatus(`⏳ Lendo planilha: "${f.name}"...`);
+  try{
+    const buf = await f.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    parseWorkbookPreditiva(wb);
+    saveLocal();
+    atualizarListaSuspensaAreas();
+    aplicarFiltroUrl();
+    renderGeral();
+    setStatus(`✅ Planilha processada com sucesso!`, 'ok');
+  }catch(err){
+    setStatus('❌ Erro ao importar: ' + err.message, 'error');
+  }
+  fileInputDiag.value='';
+});
+
+async function carregarArquivoAutomatico(){
+  const nomeArquivo = './Pasta1.xlsx';
+  try{
+    const resp = await fetch(`${nomeArquivo}?t=${new Date().getTime()}`, { cache: 'no-store' });
+    if(!resp.ok) throw new Error(`Arquivo não encontrado (Status ${resp.status})`);
+    const buf = await resp.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    parseWorkbookPreditiva(wb);
+    saveLocal();
+    atualizarListaSuspensaAreas();
+    aplicarFiltroUrl();
+    renderGeral();
+    setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
+    return true;
+  }catch(e){
+    console.error("Falha na carga:", e.message);
+    setStatus(`❌ Erro: ${e.message}. Verifique se o arquivo Pasta1.xlsx está na mesma pasta.`, 'error');
+    return false;
+  }
+}
+
+let autoRefreshTimer = null;
+function iniciarAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(async () => {
+    try{
+      const resp = await fetch(`./Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
+      if(resp.ok){
+        const buf = await resp.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array', cellDates:true});
+        parseWorkbookPreditiva(wb);
+        atualizarListaSuspensaAreas();
+        aplicarFiltroUrl();
+        renderGeral();
+      }
+    }catch(e){}
+  }, 60000);
+}
+
+(async function init(){
+  aplicarFiltroUrl();
+  if(loadLocal()) {
+    atualizarListaSuspensaAreas();
+    renderGeral();
+  }
+  setStatus('⏳ Buscando dados atualizados no servidor...');
+  await carregarArquivoAutomatico();
+  iniciarAutoRefresh();
+})();
+</script>
+</body>
+</html>
