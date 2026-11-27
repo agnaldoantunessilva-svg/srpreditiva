@@ -6,52 +6,125 @@
 <title>Cronograma Anual - Preditiva SR - Montenegro RS</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
-  :root{--primary:#1e40af;--primary-dark:#1e3a8a;--bg:#f1f5f9;--card:#fff;--text:#1e293b;--border:#cbd5e1;--n:#16a34a;--a3:#ef4444;--p:#64748b;--a2:#f97316}
+  :root{
+    --bg: #070a13; 
+    --panel: rgba(15, 23, 42, 0.75);
+    --panel-border: rgba(56, 189, 248, 0.2);
+    --txt: #e2e8f0;
+    --muted: #8b9bb4;
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  body{
+    font-family:'Inter', 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    background-image: 
+      linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
+    background-size: 40px 40px, 40px 40px, 100% 100%;
+    color: var(--txt);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
 
-  header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:.5rem}
+  header{
+    background:rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--panel-border);
+    color:#fff; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
   .header-left{display:flex;align-items:center;gap:1rem}
-  header h1{font-size:1.15rem;display:flex;align-items:center;gap:.5rem;white-space:nowrap}
-  header .badge{background:rgba(255,255,255,.2);padding:.25rem .75rem;border-radius:999px;font-size:.8rem}
+  header h1{font-size:1.2rem; display:flex; align-items:center; gap:.5rem; font-weight: 700; letter-spacing: 0.05em;}
+  header .badge{
+    background:rgba(6, 182, 212, 0.15); color: var(--cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    padding:.25rem .75rem; border-radius:4px; font-size:.75rem; font-family: var(--font-mono);
+  }
   .header-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
-  #clock{font-variant-numeric:tabular-nums;font-size:.85rem;opacity:.9}
-  
-  /* Botão de atualizar manual removido */
+  #clock{
+    font-family: var(--font-mono); font-size:.9rem; color: var(--cyan);
+    background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px;
+    border: 1px solid rgba(56, 189, 248, 0.15);
+  }
 
-  #statusBar{padding:.5rem 2rem;font-size:.85rem;background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047;display:none}
+  #statusBar{
+    padding:.75rem 2rem; font-size:.85rem; font-family: var(--font-mono); font-weight: 600;
+    background: rgba(6, 182, 212, 0.1); color: var(--cyan);
+    border-bottom: 1px solid var(--panel-border); display:none;
+  }
   #statusBar.show{display:block}
+  #statusBar.error { background: rgba(239, 68, 68, 0.1); color: #f87171; border-bottom-color: rgba(239, 68, 68, 0.3); }
+  #statusBar.ok { background: rgba(16, 185, 129, 0.1); color: #4ade80; border-bottom-color: rgba(16, 185, 129, 0.3); }
 
   main{padding:2rem;max-width:1600px;margin:0 auto;display:block !important;}
 
-  .empty{text-align:center;padding:3rem 1rem;color:#94a3b8;background:var(--card);border-radius:12px;border:2px dashed var(--border)}
+  .empty{
+    text-align:center; padding:3rem 1rem; color:var(--muted); font-family: var(--font-mono);
+    background:var(--panel); border-radius:12px; border:1px dashed var(--panel-border);
+  }
 
-  .year-tabs{display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:2px solid var(--border);padding-bottom:.5rem}
-  .year-tabs button{background:transparent;border:none;font-size:1.2rem;font-weight:700;color:#94a3b8;cursor:pointer;padding:.5rem 1rem;border-radius:6px 6px 0 0;transition:.2s}
-  .year-tabs button:hover{color:var(--primary);background:#e2e8f0}
-  .year-tabs button.active{color:var(--primary);border-bottom:3px solid var(--primary);background:transparent}
+  .year-tabs{
+    display:flex; gap:.5rem; margin-bottom:1.5rem; 
+    border-bottom:1px solid rgba(255, 255, 255, 0.1); padding-bottom:.5rem;
+  }
+  .year-tabs button{
+    background:transparent; border:none; font-size:1.1rem; font-family: var(--font-mono);
+    font-weight:700; color:var(--muted); cursor:pointer; padding:.5rem 1rem;
+    border-radius:6px 6px 0 0; transition:.2s;
+  }
+  .year-tabs button:hover{color:var(--cyan); background:rgba(6, 182, 212, 0.1);}
+  .year-tabs button.active{color:var(--cyan); border-bottom:2px solid var(--cyan); background:transparent;}
 
-  .month-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.5rem;margin-bottom:1.5rem}
-  .month-btn{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.6rem;font-weight:600;font-size:.85rem;cursor:pointer;color:var(--text);transition:.2s}
-  .month-btn:hover:not(.disabled){background:#e2e8f0;border-color:#94a3b8}
-  .month-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 4px rgba(30,64,175,.3)}
-  .month-btn.disabled{background:#f8fafc;color:#cbd5e1;border-color:#e2e8f0;cursor:not-allowed;box-shadow:none}
+  .month-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.75rem;margin-bottom:2rem}
+  .month-btn{
+    background:var(--panel); border:1px solid rgba(255, 255, 255, 0.08); border-radius:8px;
+    padding:.75rem; font-weight:700; font-size:.85rem; font-family: var(--font-mono);
+    cursor:pointer; color:var(--txt); transition:.2s;
+  }
+  .month-btn:hover:not(.disabled){
+    background:rgba(6, 182, 212, 0.1); border-color:var(--cyan);
+    transform: translateY(-2px); box-shadow: 0 4px 15px rgba(6, 182, 212, 0.2);
+  }
+  .month-btn.active{
+    background:rgba(6, 182, 212, 0.2); color:var(--cyan); border-color:var(--cyan);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+  }
+  .month-btn.disabled{background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.1);border-color:transparent;cursor:not-allowed;}
 
-  .week-block{margin-bottom:1.5rem;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 6px rgba(0,0,0,.05)}
-  .week-header{background:#e2e8f0;padding:.6rem 1rem;font-weight:bold;color:var(--primary-dark);display:flex;justify-content:space-between;align-items:center}
+  .week-block{
+    margin-bottom:1.5rem; background:var(--panel); border-radius:12px; overflow:hidden;
+    border:1px solid var(--panel-border); box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  }
+  .week-header{
+    background:rgba(0,0,0,0.4); padding:.75rem 1.25rem; font-weight:bold; color:var(--cyan);
+    font-family: var(--font-mono); border-bottom:1px solid var(--panel-border);
+    display:flex; justify-content:space-between; align-items:center;
+  }
   .week-table{width:100%;border-collapse:collapse;font-size:.85rem}
-  .week-table th{text-align:left;padding:.5rem 1rem;background:#f1f5f9;font-size:.75rem;color:#64748b;border-bottom:1px solid var(--border)}
-  .week-table td{padding:.6rem 1rem;border-bottom:1px solid var(--border);vertical-align:middle}
+  .week-table th{
+    text-align:left;padding:.75rem 1.25rem;background:rgba(255,255,255,0.03);
+    font-size:.75rem;color:var(--muted);font-family: var(--font-mono);border-bottom:1px solid var(--panel-border);
+  }
+  .week-table td{padding:.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.05);vertical-align:middle;font-family: var(--font-mono);}
   .week-table tr:last-child td{border-bottom:none}
+  .week-table tr:hover td { background: rgba(6, 182, 212, 0.05); }
 
-  .status-ok{color:var(--n);font-weight:bold}
-  .status-x{color:var(--a3);font-weight:bold}
-  .status-readequado{color:var(--a2);font-weight:bold}
-  .status-neutral{color:var(--p)}
+  .status-ok{color:#4ade80;font-weight:bold;text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);}
+  .status-x{color:#f87171;font-weight:bold;text-shadow: 0 0 10px rgba(248, 113, 113, 0.4);}
+  .status-readequado{color:#fbbf24;font-weight:bold;text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);}
+  .status-neutral{color:var(--muted)}
 
   @media(max-width:768px){
-    main{padding:1rem}header{padding:.75rem 1rem}
+    main{padding:1rem} header{padding:.75rem 1rem}
     header h1{display:none}
+    .week-table th, .week-table td { padding: 0.5rem; font-size: 0.75rem; }
   }
 </style>
 </head>
@@ -68,12 +141,11 @@
 <div id="statusBar"></div>
 
 <main>
-  <h2 style="margin-bottom:1rem">Cronograma Anual</h2>
+  <h2 style="margin-bottom:1.5rem; font-family: var(--font-mono); font-size: 1.4rem;">Cronograma Anual</h2>
   <div id="yearTabs" class="year-tabs"></div>
   <div id="monthGrid" class="month-grid"></div>
   <div id="cronoContent">
-    <!-- Mensagem de carregamento inicial -->
-    <div class="empty">⏳ Carregando dados do cronograma...</div>
+    <div class="empty">⏳ [SYNC] Carregando dados do cronograma...</div>
   </div>
 </main>
 
@@ -93,10 +165,7 @@ const statusBar = document.getElementById('statusBar');
 
 function setStatus(msg, tipo){
   statusBar.textContent = msg;
-  statusBar.className = 'show';
-  statusBar.style.background = tipo==='error'?'#fee2e2':tipo==='ok'?'#dcfce7':'#fef9c3';
-  statusBar.style.color = tipo==='error'?'#991b1b':tipo==='ok'?'#166534':'#854d0e';
-  statusBar.style.borderBottomColor = tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#fde047';
+  statusBar.className = 'show ' + tipo;
   if(tipo==='ok') setTimeout(()=>statusBar.classList.remove('show'), 5000);
 }
 
@@ -193,7 +262,7 @@ function renderCrono(){
   if(!years.length) {
     yearTabs.innerHTML = '';
     monthGrid.innerHTML = '';
-    content.innerHTML = '<div class="empty">Nenhum dado encontrado na planilha do GitHub.</div>';
+    content.innerHTML = '<div class="empty">[ERR] Nenhum dado encontrado na planilha do GitHub.</div>';
     return;
   }
 
@@ -230,9 +299,9 @@ function renderCrono(){
   let html = '';
   for(const [semName, weekItems] of Object.entries(weeks)) {
     html += `<div class="week-block">
-      <div class="week-header">${esc(semName)}</div>
+      <div class="week-header">[${esc(semName).toUpperCase()}]</div>
       <table class="week-table">
-        <thead><tr><th>Dia</th><th>Local / Atividade</th><th>Status</th></tr></thead>
+        <thead><tr><th>DIA</th><th>LOCAL / ATIVIDADE</th><th>STATUS</th></tr></thead>
         <tbody>
           ${weekItems.map(i => {
             let stClass = 'status-neutral';
@@ -267,15 +336,12 @@ window.setCronoMonth = function(m) {
   renderCrono();
 };
 
-// FUNÇÃO QUE BUSCA A PLANILHA DO GITHUB E ATUALIZA A PÁGINA SOZINHA
 async function carregarPlanilhaGitHub() {
-  // IMPORTANTE: O nome aqui deve ser EXATAMENTE igual ao arquivo no GitHub
   const urlPlanilha = 'Cronograma Preditiva Innova.xlsx'; 
   
-  setStatus('⏳ Buscando planilha no servidor...', 'info');
+  setStatus('[SYNC] Buscando planilha no servidor...', '');
 
   try {
-    // Adiciona um "?v=" com a data atual para forçar o navegador a baixar a versão mais nova e não usar o cache antigo
     const response = await fetch(urlPlanilha + '?v=' + new Date().getTime());
     
     if (!response.ok) throw new Error('Arquivo não encontrado no repositório');
@@ -286,15 +352,14 @@ async function carregarPlanilhaGitHub() {
     parseWorkbookCrono(wb);
     renderCrono();
     
-    setStatus(`✅ Cronograma atualizado automaticamente do GitHub!`, 'ok');
+    setStatus(`[OK] Cronograma atualizado automaticamente do GitHub!`, 'ok');
   } catch (error) {
     console.error(error);
-    setStatus('❌ Erro ao carregar a planilha do GitHub: ' + error.message, 'error');
-    document.getElementById('cronoContent').innerHTML = '<div class="empty">Erro ao buscar a planilha.<br>Verifique se o arquivo existe no GitHub com o nome correto.</div>';
+    setStatus('[ERR] Falha ao carregar a planilha do GitHub: ' + error.message, 'error');
+    document.getElementById('cronoContent').innerHTML = '<div class="empty">[ERR] Erro ao buscar a planilha.<br>Verifique se o arquivo existe no GitHub com o nome correto.</div>';
   }
 }
 
-// Inicia o carregamento assim que a página abrir
 (function init(){
   carregarPlanilhaGitHub();
 })();
