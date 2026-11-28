@@ -41,8 +41,6 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   }
   .header-left{display:flex;align-items:center;gap:1rem}
-  .logo-box{background:#fff;padding:.3rem .6rem;border-radius:6px;display:flex;align-items:center;justify-content:center;}
-  .logo-box img{height:24px;display:block;object-fit:contain}
   header h1{font-size:1.2rem; display:flex; align-items:center; gap:.5rem; font-weight: 700; letter-spacing: 0.05em;}
   header .badge{
     background:rgba(6, 182, 212, 0.15); color: var(--cyan);
@@ -109,6 +107,8 @@
   .toolbar input:focus,.toolbar select:focus{border-color: var(--cyan)}
   .toolbar input{flex:1;min-width:150px}
   .toolbar select option { background: #0f172a; }
+  .toolbar select:disabled { opacity: 0.35; cursor: not-allowed; }
+  .toolbar select option:disabled { color: #4a5568; }
 
   .contador-box {
     font-size: 0.9rem; font-weight: bold; color: var(--cyan);
@@ -174,8 +174,6 @@
 
 <header>
   <div class="header-left">
-    <div class="logo-box"><img src="innova.png" alt="Innova" onerror="this.style.display='none'"></div>
-    <div class="logo-box"><img src="sr.png" alt="SR Soluções" onerror="this.style.display='none'"></div>
     <h1>🔧 Preditiva SR <span class="badge">Montenegro RS</span></h1>
   </div>
   <div class="header-right">
@@ -214,14 +212,9 @@
 </div>
 
 <main>
-  <h2>Lista geral de Alarmes</h2> <!-- TEXTO ALTERADO AQUI -->
+  <h2>Lista geral de Alarmes</h2>
   
   <div class="toolbar" style="margin-top:1rem">
-    <input type="text" id="searchGeral" placeholder="🔍 Buscar TAG, diagnóstico ou recomendação...">
-    <select id="filterArea">
-      <option value="">Todas as Áreas</option>
-    </select>
-    <input type="text" id="filterSap" placeholder="🔢 Filtrar por N. SAP...">
     <select id="filterGeral">
       <option value="">Todos os status</option>
       <option value="N">Normal</option><option value="M">Manutenção</option>
@@ -229,6 +222,17 @@
       <option value="A1">A1 - Alerta inicial</option><option value="A2">A2 - Crítico</option>
       <option value="A3">A3 - Alerta inicial</option><option value="A4">A4 - Crítico</option>
     </select>
+    <select id="filterArea">
+      <option value="">Todas as Áreas</option>
+    </select>
+    <select id="filterLocal">
+      <option value="">Todos os Locais</option>
+    </select>
+    <select id="filterBuscaTipo">
+      <option value="relatorio">N. Relatório</option>
+      <option value="sap">N. SAP</option>
+    </select>
+    <input type="text" id="filterBuscaValor" placeholder="🔢 Digite o número...">
   </div>
   <div class="contador-box" id="contadorRegistros">Mostrando 0 registros</div>
   <div style="overflow-x:auto">
@@ -237,7 +241,7 @@
         <tr>
           <th class="hide-col">Área</th>
           <th>Local</th>
-          <th class="col-tag">TAG</th> <!-- CLASSE ADICIONADA -->
+          <th class="col-tag">TAG</th>
           <th class="hide-col">Insp.</th>
           <th>St-2</th>
           <th>St-1</th>
@@ -344,32 +348,6 @@ function parseWorkbookPreditiva(wb){
   DB.updatedAt = new Date().toISOString();
 }
 
-function atualizarListaSuspensaAreas() {
-  const select = document.getElementById('filterArea');
-  const valorAtual = select.value; 
-  select.innerHTML = '<option value="">Todas as Áreas</option>';
-  
-  const areasSet = new Set();
-  Object.values(DB.diagnostico).forEach(arr => {
-    arr.forEach(x => {
-      if(x.setor && x.setor.trim() !== '') {
-        areasSet.add(x.setor.trim());
-      }
-    });
-  });
-  
-  const areasOrdenadas = Array.from(areasSet).sort();
-  
-  areasOrdenadas.forEach(area => {
-    const opt = document.createElement('option');
-    opt.value = area;
-    opt.textContent = area;
-    select.appendChild(opt);
-  });
-  
-  select.value = valorAtual;
-}
-
 function getSt0FromUrl() {
   const params = new URLSearchParams(window.location.search);
   const v = norm(params.get('st0'));
@@ -398,35 +376,147 @@ document.getElementById('btnLimparFiltroUrl').addEventListener('click', () => {
   window.location.href = url.toString();
 });
 
+/* ============================================================
+   NOVA LÓGICA: filtros dinâmicos e dependentes
+   ============================================================ */
+
+function getAllRows() {
+  const all = [];
+  Object.entries(DB.diagnostico).forEach(([area, arr]) => arr.forEach(x => all.push({ ...x, area })));
+  return all;
+}
+
+/* Retorna o conjunto de status St-0 presentes nos registros,
+   opcionalmente considerando um filtro de status já selecionado */
+function getStatusDisponiveis(statusFiltro) {
+  const all = getAllRows();
+  const set = new Set();
+  all.forEach(x => {
+    if (statusFiltro && norm(x.s0) !== norm(statusFiltro)) return;
+    const v = norm(x.s0);
+    if (v) set.add(v);
+  });
+  return set;
+}
+
+/* Popula o select de Áreas. Se um status estiver selecionado,
+   apenas as áreas que possuem registros com aquele status ficam habilitadas;
+   as demais ficam desabilitadas (não removidas). */
+function atualizarAreas(statusFiltro) {
+  const select = document.getElementById('filterArea');
+  const valorAtual = select.value;
+
+  // Coleta todas as áreas existentes (independente de status)
+  const todasAreas = new Set();
+  Object.values(DB.diagnostico).forEach(arr => {
+    arr.forEach(x => { if (x.setor && x.setor.trim() !== '') todasAreas.add(x.setor.trim()); });
+  });
+
+  // Coleta áreas que possuem o status selecionado (se houver)
+  const areasComStatus = new Set();
+  if (statusFiltro) {
+    getAllRows().forEach(x => {
+      if (norm(x.s0) === norm(statusFiltro) && x.setor && x.setor.trim() !== '') {
+        areasComStatus.add(x.setor.trim());
+      }
+    });
+  }
+
+  const areasOrdenadas = Array.from(todasAreas).sort();
+
+  select.innerHTML = '<option value="">Todas as Áreas</option>';
+  areasOrdenadas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area;
+    opt.textContent = area;
+    if (statusFiltro && !areasComStatus.has(area)) {
+      opt.disabled = true;
+      opt.textContent = `${area} (sem ${statusFiltro})`;
+    }
+    select.appendChild(opt);
+  });
+
+  // Se a área selecionada anteriormente ficou indisponível, limpa
+  if (valorAtual) {
+    const opt = Array.from(select.options).find(o => o.value === valorAtual);
+    if (opt && !opt.disabled) select.value = valorAtual;
+    else select.value = '';
+  }
+}
+
+/* Popula o select de Locais com base na Área e Status selecionados */
+function atualizarLocais(statusFiltro, areaFiltro) {
+  const select = document.getElementById('filterLocal');
+  const valorAtual = select.value;
+
+  const locais = new Set();
+  getAllRows().forEach(x => {
+    if (statusFiltro && norm(x.s0) !== norm(statusFiltro)) return;
+    if (areaFiltro && x.setor.trim() !== areaFiltro) return;
+    if (x.local && x.local.trim() !== '') locais.add(x.local.trim());
+  });
+
+  const ordenados = Array.from(locais).sort();
+  select.innerHTML = '<option value="">Todos os Locais</option>';
+  ordenados.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l;
+    opt.textContent = l;
+    select.appendChild(opt);
+  });
+
+  if (valorAtual && Array.from(select.options).some(o => o.value === valorAtual)) {
+    select.value = valorAtual;
+  } else {
+    select.value = '';
+  }
+}
+
+/* Atualiza todos os selects dependentes em cadeia */
+function atualizarFiltrosDependentes() {
+  const status = document.getElementById('filterGeral').value;
+  const area = document.getElementById('filterArea').value;
+  atualizarAreas(status);
+  // Após atualizar áreas, a área pode ter sido limpa; relê
+  const areaAtual = document.getElementById('filterArea').value;
+  atualizarLocais(status, areaAtual);
+}
+
 function renderGeral(){
   const tb = document.querySelector('#tableGeral tbody');
-  const all = [];
-  Object.entries(DB.diagnostico).forEach(([area,arr])=> arr.forEach(x=> all.push({...x, area})));
+  const all = getAllRows();
   
-  const q = (document.getElementById('searchGeral').value||'').toLowerCase();
-  const fArea = document.getElementById('filterArea').value;
-  const fSap = (document.getElementById('filterSap').value||'').toLowerCase();
   const fStatus = norm(document.getElementById('filterGeral').value);
+  const fArea = document.getElementById('filterArea').value;
+  const fLocal = document.getElementById('filterLocal').value;
+  const buscaTipo = document.getElementById('filterBuscaTipo').value;
+  const buscaValor = (document.getElementById('filterBuscaValor').value || '').toLowerCase().trim();
   
-  const filt = all.filter(x=>{
-    const okQ = !q || [x.tag, x.diag, x.rec].join(' ').toLowerCase().includes(q);
-    const okArea = !fArea || x.setor.trim() === fArea;
-    const okSap = !fSap || x.sap.toLowerCase().includes(fSap);
-    const okStatus = !fStatus || norm(x.s0) === fStatus;
-    return okQ && okArea && okSap && okStatus;
+  const filt = all.filter(x => {
+    if (fStatus && norm(x.s0) !== fStatus) return false;
+    if (fArea && x.setor.trim() !== fArea) return false;
+    if (fLocal && x.local.trim() !== fLocal) return false;
+
+    if (buscaValor) {
+      let rel = x.relatorioFixo;
+      if (!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
+      const alvo = buscaTipo === 'sap' ? (x.sap || '') : (rel || '');
+      if (!String(alvo).toLowerCase().includes(buscaValor)) return false;
+    }
+    return true;
   });
 
   document.getElementById('contadorRegistros').textContent = `Mostrando ${filt.length} registro(s)`;
 
-  tb.innerHTML = filt.length ? filt.map(x=>{
+  tb.innerHTML = filt.length ? filt.map(x => {
     let rel = x.relatorioFixo;
-    if(!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
+    if (!rel || rel === '-' || rel === '') rel = extrairRelatorio(x.diag);
 
     return `
     <tr>
       <td class="hide-col">${esc(x.setor)}</td>
       <td>${esc(x.local)}</td>
-      <td class="col-tag"><strong>${esc(x.tag)}</strong></td> <!-- CLASSE ADICIONADA AQUI TAMBÉM -->
+      <td class="col-tag"><strong>${esc(x.tag)}</strong></td>
       <td class="hide-col">${esc(x.tipo)}</td>
       <td>${stBadge(x.s2)}</td>
       <td>${stBadge(x.s1)}</td>
@@ -439,10 +529,24 @@ function renderGeral(){
     </tr>`}).join('') : `<tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">Nenhum registro encontrado com os filtros atuais.</td></tr>`;
 }
 
-document.getElementById('searchGeral').addEventListener('input',renderGeral);
-document.getElementById('filterArea').addEventListener('change',renderGeral);
-document.getElementById('filterSap').addEventListener('input',renderGeral);
-document.getElementById('filterGeral').addEventListener('change',renderGeral);
+/* ============================================================
+   Eventos
+   ============================================================ */
+
+document.getElementById('filterGeral').addEventListener('change', () => {
+  atualizarFiltrosDependentes();
+  renderGeral();
+});
+document.getElementById('filterArea').addEventListener('change', () => {
+  // Ao mudar área, atualiza locais e depois renderiza
+  const status = document.getElementById('filterGeral').value;
+  const area = document.getElementById('filterArea').value;
+  atualizarLocais(status, area);
+  renderGeral();
+});
+document.getElementById('filterLocal').addEventListener('change', renderGeral);
+document.getElementById('filterBuscaTipo').addEventListener('change', renderGeral);
+document.getElementById('filterBuscaValor').addEventListener('input', renderGeral);
 
 const fileInputDiag = document.getElementById('fileInputDiag');
 const statusBar = document.getElementById('statusBar');
@@ -475,8 +579,8 @@ fileInputDiag.addEventListener('change', async (e)=>{
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
-    atualizarListaSuspensaAreas();
     aplicarFiltroUrl();
+    atualizarFiltrosDependentes();
     renderGeral();
     setStatus(`✅ Planilha processada com sucesso!`, 'ok');
   }catch(err){
@@ -494,8 +598,8 @@ async function carregarArquivoAutomatico(){
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     parseWorkbookPreditiva(wb);
     saveLocal();
-    atualizarListaSuspensaAreas();
     aplicarFiltroUrl();
+    atualizarFiltrosDependentes();
     renderGeral();
     setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
     return true;
@@ -516,8 +620,7 @@ function iniciarAutoRefresh() {
         const buf = await resp.arrayBuffer();
         const wb = XLSX.read(buf, {type:'array', cellDates:true});
         parseWorkbookPreditiva(wb);
-        atualizarListaSuspensaAreas();
-        aplicarFiltroUrl();
+        atualizarFiltrosDependentes();
         renderGeral();
       }
     }catch(e){}
@@ -527,7 +630,7 @@ function iniciarAutoRefresh() {
 (async function init(){
   aplicarFiltroUrl();
   if(loadLocal()) {
-    atualizarListaSuspensaAreas();
+    atualizarFiltrosDependentes();
     renderGeral();
   }
   setStatus('⏳ Buscando dados atualizados no servidor...');
