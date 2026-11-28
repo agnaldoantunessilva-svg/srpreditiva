@@ -7,93 +7,132 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
   :root{
-    --bg: #070a13;
-    --panel: rgba(15, 23, 42, 0.75);
-    --panel-border: rgba(56, 189, 248, 0.2);
-    --txt: #e2e8f0;
-    --muted: #8b9bb4;
+    --bg: #031533; /* Fundo azul escuro profundo */
+    --panel: rgba(6, 30, 70, 0.6);
+    --panel-border: #0ea5e9; /* Azul ciano vibrante da foto */
+    --txt: #ffffff;
+    --muted: #94a3b8;
     --cyan: #06b6d4;
-    --green: #10b981;
-    --amber: #f59e0b;
-    --red: #ef4444;
-    --purple: #8b5cf6;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
   }
+  
   *{box-sizing:border-box;margin:0;padding:0}
+  
   body{
-    font-family:'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     background-color: var(--bg);
-    background-image:
-      linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
-    background-size: 40px 40px, 40px 40px, 100% 100%;
+    /* Fundo sutil de grade igual ao da foto */
+    background-image: 
+      linear-gradient(rgba(14, 165, 233, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+    background-size: 60px 60px, 60px 60px;
     color: var(--txt);
     line-height: 1.5;
     min-height: 100vh;
   }
 
+  /* HEADER */
   header{
-    background:rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--panel-border);
-    color:#fff; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;
+    background: linear-gradient(180deg, #061f4a 0%, #031533 100%);
+    border-bottom: 2px solid var(--panel-border);
+    color:#fff; 
+    padding: 0.5rem 2rem; 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center;
     position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:.5rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
   }
-  .header-left{display:flex;align-items:center;gap:1rem}
+  
+  .header-left{display:flex;align-items:center;gap:1.5rem}
+  
+  /* LOGO 200px */
   .header-left img.logo{
-    height: 42px; object-fit: contain;
+    height: 200px; 
+    object-fit: contain;
     mix-blend-mode: screen;
-    filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.8));
+    /* Compensa o tamanho grande da logo para não estourar o header */
+    margin-top: -50px;
+    margin-bottom: -50px;
+    filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.4));
   }
-  header h1{font-size:1.1rem; display:flex; align-items:center; gap:.5rem; font-weight: 700; letter-spacing: 0.05em;}
+  
+  header h1{
+    font-size:1.6rem; 
+    display:flex; 
+    align-items:center; 
+    gap:1rem; 
+    font-weight: 700; 
+    letter-spacing: 0.05em;
+  }
+  
   header .badge{
-    background:rgba(6, 182, 212, 0.15); color: var(--cyan);
-    border: 1px solid rgba(6, 182, 212, 0.3);
-    padding:.25rem .75rem; border-radius:4px; font-size:.7rem; font-family: var(--font-mono);
+    background: rgba(14, 165, 233, 0.15); 
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.5);
+    padding:.35rem 1rem; border-radius: 6px; font-size:.9rem; font-family: var(--font-mono);
   }
+  
   .header-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  
   #clock{
-    font-family: var(--font-mono); font-size:.9rem; color: var(--cyan);
-    background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 6px;
-    border: 1px solid rgba(56, 189, 248, 0.15);
+    font-family: var(--font-mono); 
+    font-size:1.2rem; 
+    color: #fff;
+    background: rgba(0,0,0,0.5); 
+    padding: 10px 20px; 
+    border-radius: 8px;
+    border: 1px solid rgba(14, 165, 233, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .btn-upload{
-    background: rgba(6, 182, 212, 0.1); color: var(--cyan); border: 1px solid rgba(6, 182, 212, 0.3);
-    padding:.55rem 1rem; border-radius:6px; cursor:pointer; font-weight:700; font-size:.85rem;
-    font-family: var(--font-mono); transition:.2s; display:flex; align-items:center; gap:.4rem;
+  #clock::before {
+    content: "📅";
+    font-size: 1.2rem;
   }
-  .btn-upload:hover{ background: rgba(6, 182, 212, 0.2); box-shadow: 0 0 15px rgba(6, 182, 212, 0.3); }
 
+  /* BARRA DE STATUS */
   #statusBar{
-    padding:.75rem 2rem; font-size:.85rem; font-family: var(--font-mono); font-weight: 600;
-    background: rgba(6, 182, 212, 0.1); color: var(--cyan);
+    padding:.75rem 2rem; font-size:.9rem; font-family: var(--font-mono); font-weight: 600;
+    background: rgba(14, 165, 233, 0.1); color: #38bdf8;
     border-bottom: 1px solid var(--panel-border); display:none;
   }
   #statusBar.show{display:block}
-  #statusBar.error { background: rgba(239, 68, 68, 0.1); color: #f87171; border-bottom-color: rgba(239, 68, 68, 0.3); }
-  #statusBar.ok { background: rgba(16, 185, 129, 0.1); color: #4ade80; border-bottom-color: rgba(16, 185, 129, 0.3); }
+  #statusBar.error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-bottom-color: #ef4444; }
+  #statusBar.ok { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-bottom-color: #10b981; }
 
   main{padding:2rem;max-width:1800px;margin:0 auto}
 
   .page-title{
-    font-size: 1.4rem; font-weight: 700; letter-spacing: 0.05em;
-    text-transform: uppercase; margin-bottom: .5rem;
-    display: flex; align-items: center; gap: .5rem;
+    font-size: 2.2rem; 
+    font-weight: 800; 
+    letter-spacing: 0.05em;
+    text-transform: uppercase; 
+    margin-bottom: .5rem;
+    display: flex; 
+    align-items: center; 
+    gap: .5rem;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
   }
   .page-title::before{
-    content: ">"; color: var(--cyan); font-family: var(--font-mono);
+    content: "❯"; 
+    color: #0ea5e9; 
+    font-family: var(--font-mono);
   }
   .page-sub{
-    color: var(--muted); font-size: .85rem; font-family: var(--font-mono);
-    margin-bottom: 1.5rem;
+    color: #94a3b8; 
+    font-size: 1.1rem; 
+    font-family: var(--font-mono);
+    margin-bottom: 2rem;
   }
 
+  /* GRID DE BOTÕES DE ÁREAS */
   .areas-grid{
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
+    gap: 1.5rem;
     margin-top: 1.5rem;
   }
   @media(max-width: 900px){
@@ -103,81 +142,92 @@
   .area-btn{
     position: relative;
     background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 1.25rem 1.5rem;
+    border: 2px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 1.5rem;
     cursor: pointer;
     transition: all 0.25s ease;
-    text-align: left;
+    text-align: center;
     color: var(--txt);
     font-family: inherit;
     overflow: hidden;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3), 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
   }
-  .area-btn::before{
-    content: "";
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--purple), transparent);
-    opacity: 0.6;
-  }
+  
   .area-btn:hover{
-    background: rgba(15, 23, 42, 0.95);
-    border-color: rgba(139, 92, 246, 0.6);
+    background: rgba(14, 165, 233, 0.1);
+    border-color: #38bdf8;
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3), inset 0 0 20px rgba(14, 165, 233, 0.1);
   }
   .area-btn:active{ transform: translateY(0); }
 
+  /* NOME DA ÁREA GIGANTE E CENTRALIZADO */
   .area-name{
-    font-size: 1.35rem; font-weight: 800; letter-spacing: 0.05em;
-    text-transform: uppercase; margin-bottom: 1rem;
-    display: flex; align-items: center; justify-content: space-between;
+    font-size: 3rem; 
+    font-weight: 800; 
+    letter-spacing: 0.05em;
+    text-transform: uppercase; 
+    margin-bottom: 1.5rem;
     font-family: var(--font-mono);
-  }
-  .area-name .icon{
-    font-size: 1.1rem; opacity: 0.7; color: var(--purple);
+    width: 100%;
+    color: #ffffff;
+    text-shadow: 0 0 15px rgba(255,255,255,0.1);
   }
 
+  /* CONTADORES */
   .counters{
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: .75rem;
+    display: flex;
+    justify-content: center;
+    gap: 3.5rem; 
+    width: 100%;
   }
+  
   .counter{
-    background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 8px;
-    padding: .65rem .5rem;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
   }
+
+  /* LETRAS EM CIMA (BRANCAS) */
   .counter .lbl{
-    font-size: .65rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--muted);
-    font-family: var(--font-mono); margin-bottom: .35rem;
-    display: block;
+    font-size: 1.2rem; 
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: #ffffff;
   }
+
+  /* NÚMEROS EMBAIXO (COLORIDOS) */
   .counter .val{
-    font-family: var(--font-mono); font-size: 1.6rem; font-weight: 800;
+    font-family: var(--font-mono); 
+    font-size: 1.5rem; 
+    font-weight: 800;
     line-height: 1;
   }
-  .counter.c-N .val{ color: #34d399; }
-  .counter.c-A1 .val{ color: #fbbf24; }
-  .counter.c-A2 .val{ color: #fb923c; }
-  .counter.c-M .val{ color: #a78bfa; }
+  
+  /* Cores dos números */
+  .counter.c-N .val  { color: #22c55e; } /* Verde */
+  .counter.c-A1 .val { color: #eab308; } /* Amarelo */
+  .counter.c-A2 .val { color: #f97316; } /* Laranja */
+  .counter.c-M .val  { color: #38bdf8; } /* Azul Claro */
 
-  .counter.c-N{ border-color: rgba(16, 185, 129, 0.2); }
-  .counter.c-A1{ border-color: rgba(234, 179, 8, 0.2); }
-  .counter.c-A2{ border-color: rgba(249, 115, 22, 0.2); }
-  .counter.c-M{ border-color: rgba(139, 92, 246, 0.2); }
-
-  .area-btn.no-data{ opacity: 0.65; }
+  .area-btn.no-data{ opacity: 0.5; }
 
   @media(max-width:768px){
     main{padding:1rem}
     header{padding:.75rem 1rem}
+    .header-left img.logo{ height: 120px; margin: -20px 0; }
     header h1{display:none}
-    .counters{grid-template-columns: repeat(2, 1fr);}
-    .area-name{font-size: 1.15rem;}
+    .area-name{font-size: 2.2rem;}
+    .counters{gap: 2rem;}
+    .page-title{font-size: 1.5rem;}
+    #clock { font-size: 1rem; padding: 6px 12px; }
   }
 </style>
 </head>
@@ -190,16 +240,17 @@
   </div>
   <div class="header-right">
     <div id="clock"></div>
-    <button id="btnReload" class="btn-upload">🔄 Atualizar</button>
   </div>
 </header>
 <div id="statusBar"></div>
 
 <main>
   <div class="page-title">Relatórios Operacionais Mecânicos</div>
-  <div class="page-sub">Clique em uma área para abrir o diagnóstico detalhado dos alarmados (PDF).</div>
+  <div class="page-sub">clique em uma área para abrir o diagnóstico detalhado dos alarmados (PDF).</div>
 
-  <div class="areas-grid" id="areasGrid"></div>
+  <div class="areas-grid" id="areasGrid">
+    <!-- Preenchido via JS -->
+  </div>
 </main>
 
 <script>
@@ -210,9 +261,6 @@ function tick(){
 }
 setInterval(tick, 1000); tick();
 
-/* ============================================================
-   ÁREAS OPERACIONAIS (nomes conforme foto)
-   ============================================================ */
 const AREAS = [
   { key: 'BMS1',        label: 'BMS1',        pdf: 'BMS 1- Diagnóstico detalhado dos Alarmados.pdf' },
   { key: 'BMS2',        label: 'BMS2',        pdf: 'BMS 2- Diagnóstico detalhado dos Alarmados.pdf' },
@@ -231,7 +279,6 @@ function norm(s){
     .toUpperCase();
 }
 
-/* Correspondência setor (planilha) -> área do botão */
 function setorMatchesArea(setor, areaKey){
   const s = norm(setor);
   if (!s) return false;
@@ -246,9 +293,6 @@ function setorMatchesArea(setor, areaKey){
   return false;
 }
 
-/* ============================================================
-   LEITURA DA PLANILHA
-   ============================================================ */
 const DB = { diagnostico: {}, updatedAt: null };
 
 async function carregarArquivoAutomatico(){
@@ -306,9 +350,6 @@ function parseWorkbook(wb){
   DB.updatedAt = new Date().toISOString();
 }
 
-/* ============================================================
-   CONTAGEM POR ÁREA (mecânica: N, A1, A2, M)
-   ============================================================ */
 function contarPorArea(){
   const resultado = {};
   AREAS.forEach(a => { resultado[a.key] = { N: 0, A1: 0, A2: 0, M: 0, total: 0 }; });
@@ -329,9 +370,6 @@ function contarPorArea(){
   return resultado;
 }
 
-/* ============================================================
-   RENDERIZAÇÃO DOS BOTÕES
-   ============================================================ */
 function renderAreas(){
   const grid = document.getElementById('areasGrid');
   const contagens = contarPorArea();
@@ -342,8 +380,7 @@ function renderAreas(){
     return `
       <button class="area-btn ${semDados ? 'no-data' : ''}" data-pdf="${encodeURI(a.pdf)}" data-area="${a.key}">
         <div class="area-name">
-          <span>${a.label}</span>
-          <span class="icon">📄</span>
+          ${a.label}
         </div>
         <div class="counters">
           <div class="counter c-N"><span class="lbl">N</span><span class="val">${c.N}</span></div>
@@ -368,9 +405,6 @@ function renderAreas(){
   });
 }
 
-/* ============================================================
-   STATUS BAR
-   ============================================================ */
 const statusBar = document.getElementById('statusBar');
 function setStatus(msg, tipo){
   statusBar.textContent = msg;
@@ -378,20 +412,24 @@ function setStatus(msg, tipo){
   if(tipo === 'ok') setTimeout(() => statusBar.classList.remove('show'), 4000);
 }
 
-/* ============================================================
-   INIT
-   ============================================================ */
-document.getElementById('btnReload').addEventListener('click', async () => {
-  const btn = document.getElementById('btnReload');
-  btn.innerHTML = '⏳ Carregando...';
-  await carregarArquivoAutomatico();
-  btn.innerHTML = '🔄 Atualizar';
-});
-
 (async function init(){
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
-  setInterval(carregarArquivoAutomatico, 60000);
+  
+  // Atualização automática silenciosa (60s)
+  setInterval(async () => {
+    try {
+      const resp = await fetch(`./Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
+      if(resp.ok){
+        const buf = await resp.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array', cellDates:true});
+        parseWorkbook(wb);
+        renderAreas();
+      }
+    } catch(e) {
+      console.log("Falha no auto-refresh", e);
+    }
+  }, 60000); 
 })();
 </script>
 </body>
