@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operacional Mecânico — Preditiva SR Montenegro RS</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg: #070a13;
+    --panel: rgba(15, 23, 42, 0.75);
+    --panel-border: rgba(56, 189, 248, 0.2);
+    --txt: #e2e8f0;
+    --muted: #8b9bb4;
+    --cyan: #06b6d4;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter', 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 60%);
+    background-size: 40px 40px, 40px 40px, 100% 100%;
+    color: var(--txt);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header{
+    background:rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--panel-border);
+    color:#fff; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .header-left{display:flex;align-items:center;gap:1.2rem}
+  
+  /* LOGO 120px */
+  .header-left img.logo{
+    height: 120px; 
+    object-fit: contain;
+    mix-blend-mode: screen;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.9));
+  }
+  header h1{font-size:1.3rem; display:flex; align-items:center; gap:.5rem; font-weight: 700; letter-spacing: 0.05em;}
+  header .badge{
+    background:rgba(6, 182, 212, 0.15); color: var(--cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    padding:.25rem .75rem; border-radius:4px; font-size:.75rem; font-family: var(--font-mono);
+  }
+  .header-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  #clock{
+    font-family: var(--font-mono); font-size:1rem; color: var(--cyan);
+    background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 6px;
+    border: 1px solid rgba(56, 189, 248, 0.15);
+  }
+
+  /* BARRA DE STATUS */
+  #statusBar{
+    padding:.75rem 2rem; font-size:.85rem; font-family: var(--font-mono); font-weight: 600;
+    background: rgba(6, 182, 212, 0.1); color: var(--cyan);
+    border-bottom: 1px solid var(--panel-border); display:none;
+  }
+  #statusBar.show{display:block}
+  #statusBar.error { background: rgba(239, 68, 68, 0.1); color: #f87171; border-bottom-color: rgba(239, 68, 68, 0.3); }
+  #statusBar.ok { background: rgba(16, 185, 129, 0.1); color: #4ade80; border-bottom-color: rgba(16, 185, 129, 0.3); }
+
+  main{padding:2rem;max-width:1800px;margin:0 auto}
+
+  .page-title{
+    font-size: 1.6rem; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: .5rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .page-title::before{
+    content: ">"; color: var(--cyan); font-family: var(--font-mono);
+  }
+  .page-sub{
+    color: var(--muted); font-size: .9rem; font-family: var(--font-mono);
+    margin-bottom: 1.5rem;
+  }
+
+  /* GRID DE BOTÕES DE ÁREAS */
+  .areas-grid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  @media(max-width: 900px){
+    .areas-grid{ grid-template-columns: 1fr; }
+  }
+
+  .area-btn{
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: center; /* Centraliza o conteúdo */
+    color: var(--txt);
+    font-family: inherit;
+    overflow: hidden;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .area-btn::before{
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--purple), transparent);
+    opacity: 0.6;
+  }
+  .area-btn:hover{
+    background: rgba(15, 23, 42, 0.95);
+    border-color: rgba(139, 92, 246, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(0,0,0,0.4);
+  }
+  .area-btn:active{ transform: translateY(0); }
+
+  /* NOME DA ÁREA MAIOR E CENTRALIZADO */
+  .area-name{
+    font-size: 2.4rem; font-weight: 800; letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: 1.2rem;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: var(--font-mono);
+    width: 100%;
+  }
+  .area-name .icon{
+    font-size: 1.5rem; opacity: 0.7; color: var(--purple);
+  }
+
+  /* CONTADORES (MENORES) */
+  .counters{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+    width: 100%;
+    max-width: 500px; /* Limita a largura para não esticar demais */
+  }
+  .counter{
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 0.6rem .4rem;
+    text-align: center;
+  }
+  .counter .lbl{
+    font-size: .75rem; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    font-family: var(--font-mono); margin-bottom: .3rem;
+    display: block;
+  }
+  
+  /* NÚMEROS MENORES NOS CONTADORES */
+  .counter .val{
+    font-family: var(--font-mono); font-size: 1.6rem; font-weight: 800;
+    line-height: 1;
+  }
+  .counter.c-N .val{ color: #34d399; }
+  .counter.c-A1 .val{ color: #fbbf24; }
+  .counter.c-A2 .val{ color: #fb923c; }
+  .counter.c-M .val{ color: #a78bfa; }
+
+  .counter.c-N{ border-color: rgba(16, 185, 129, 0.2); }
+  .counter.c-A1{ border-color: rgba(234, 179, 8, 0.2); }
+  .counter.c-A2{ border-color: rgba(249, 115, 22, 0.2); }
+  .counter.c-M{ border-color: rgba(139, 92, 246, 0.2); }
+
+  .area-btn.no-data{ opacity: 0.65; }
+
+  @media(max-width:768px){
+    main{padding:1rem}
+    header{padding:.75rem 1rem}
+    .header-left img.logo{ height: 80px; }
+    header h1{display:none}
+    .counters{grid-template-columns: repeat(4, 1fr); max-width: 100%; gap: 0.5rem;}
+    .area-name{font-size: 1.8rem;}
+    .counter .val{font-size: 1.4rem;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <!-- LOGO 120px -->
+    <img src="innova.png" alt="Innova" class="logo" onerror="this.style.display='none'">
+    <h1>🔧 Op. Mecânico <span class="badge">Montenegro RS</span></h1>
+  </div>
+  <div class="header-right">
+    <div id="clock"></div>
+  </div>
+</header>
+<div id="statusBar"></div>
+
+<main>
+  <div class="page-title">Relatórios Operacionais Mecânicos</div>
+  <div class="page-sub">Clique em uma área para abrir o diagnóstico detalhado dos alarmados (PDF).</div>
+
+  <div class="areas-grid" id="areasGrid">
+    <!-- Preenchido via JS -->
+  </div>
+</main>
+
+<script>
+function tick(){
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleDateString('pt-BR') + ' ' + n.toLocaleTimeString('pt-BR');
+}
+setInterval(tick, 1000); tick();
+
+/* ============================================================
+   ÁREAS OPERACIONAIS
+   ============================================================ */
+const AREAS = [
+  { key: 'BMS1',        label: 'BMS1',        pdf: 'BMS 1- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'BMS2',        label: 'BMS2',        pdf: 'BMS 2- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'BMS3',        label: 'BMS3',        pdf: 'BMS 3- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'RECICLAGENS', label: 'Reciclagens', pdf: 'Reciclagens- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'SLITTERS',    label: 'Slitters',    pdf: 'Slitters- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'RECORTES',    label: 'Recortes',    pdf: 'Recortes- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'UTILIDADES',  label: 'Utilidades',  pdf: 'Utilidades- Diagnóstico detalhado dos Alarmados.pdf' },
+  { key: 'METALIZACAO', label: 'Metalização', pdf: 'Metalização- Diagnóstico detalhado dos Alarmados.pdf' }
+];
+
+function norm(s){
+  return (s||'').toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/gi, '')
+    .toUpperCase();
+}
+
+function setorMatchesArea(setor, areaKey){
+  const s = norm(setor);
+  if (!s) return false;
+  if (areaKey === 'BMS1') return s === 'BMS1';
+  if (areaKey === 'BMS2') return s === 'BMS2';
+  if (areaKey === 'BMS3') return s === 'BMS3';
+  if (areaKey === 'RECICLAGENS') return s.includes('RECICLAGEM') || s.includes('RECICLAGENS');
+  if (areaKey === 'SLITTERS') return s.includes('SLITTER') || s.includes('SLITTERS');
+  if (areaKey === 'RECORTES') return s.includes('RECORTE');
+  if (areaKey === 'UTILIDADES') return s.includes('UTILIDADE');
+  if (areaKey === 'METALIZACAO') return s.includes('METALIZACAO') || s.includes('METALIZA');
+  return false;
+}
+
+/* ============================================================
+   LEITURA DA PLANILHA E ATUALIZAÇÃO AUTOMÁTICA
+   ============================================================ */
+const DB = { diagnostico: {}, updatedAt: null };
+
+async function carregarArquivoAutomatico(){
+  const nomeArquivo = './Pasta1.xlsx';
+  try{
+    const resp = await fetch(`${nomeArquivo}?t=${new Date().getTime()}`, { cache: 'no-store' });
+    if(!resp.ok) throw new Error(`Arquivo não encontrado (Status ${resp.status})`);
+    const buf = await resp.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    parseWorkbook(wb);
+    renderAreas();
+    setStatus(`✅ Dados atualizados com sucesso!`, 'ok');
+    return true;
+  }catch(e){
+    console.error("Falha na carga:", e.message);
+    setStatus(`❌ Erro: ${e.message}. Verifique se o arquivo Pasta1.xlsx está na mesma pasta.`, 'error');
+    return false;
+  }
+}
+
+function parseWorkbook(wb){
+  DB.diagnostico = {};
+  wb.SheetNames.forEach(nameRaw => {
+    const ws = wb.Sheets[nameRaw];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', blankrows:false, raw:false});
+    if(!rows || rows.length === 0) return;
+
+    let headerIdx = -1;
+    for(let i=0; i<Math.min(rows.length, 50); i++){
+      const rowStr = rows[i].map(norm).join(' ');
+      if(rowStr.includes('TAG') || rowStr.includes('LOCAL')){ headerIdx = i; break; }
+    }
+    if(headerIdx < 0) return;
+
+    const areaNome = nameRaw.trim().toUpperCase();
+    const out = [];
+    for(let r = headerIdx + 1; r < rows.length; r++){
+      const row = rows[r];
+      if(!row || row.length === 0) continue;
+      const local = String(row[2]||'').trim();
+      const tag   = String(row[3]||'').trim();
+      if(!local && !tag) continue;
+      out.push({
+        setor: String(row[1]||'').trim(),
+        local: local,
+        tag:   tag || 'S/TAG',
+        s2:    norm(row[5]),
+        s1:    norm(row[6]),
+        s0:    norm(row[7]),
+        sap:   String(row[12]||'').trim()
+      });
+    }
+    if(out.length > 0) DB.diagnostico[areaNome] = out;
+  });
+  DB.updatedAt = new Date().toISOString();
+}
+
+function contarPorArea(){
+  const resultado = {};
+  AREAS.forEach(a => { resultado[a.key] = { N: 0, A1: 0, A2: 0, M: 0, total: 0 }; });
+
+  Object.values(DB.diagnostico).forEach(arr => {
+    arr.forEach(x => {
+      const st = x.s0;
+      if (!['N','A1','A2','M'].includes(st)) return;
+      let areaKey = null;
+      for (const a of AREAS){
+        if (setorMatchesArea(x.setor, a.key)) { areaKey = a.key; break; }
+      }
+      if (!areaKey) return;
+      resultado[areaKey][st]++;
+      resultado[areaKey].total++;
+    });
+  });
+  return resultado;
+}
+
+function renderAreas(){
+  const grid = document.getElementById('areasGrid');
+  const contagens = contarPorArea();
+
+  grid.innerHTML = AREAS.map(a => {
+    const c = contagens[a.key];
+    const semDados = c.total === 0;
+    return `
+      <button class="area-btn ${semDados ? 'no-data' : ''}" data-pdf="${encodeURI(a.pdf)}" data-area="${a.key}">
+        <div class="area-name">
+          <span>${a.label}</span>
+          <span class="icon">📄</span>
+        </div>
+        <div class="counters">
+          <div class="counter c-N"><span class="lbl">N</span><span class="val">${c.N}</span></div>
+          <div class="counter c-A1"><span class="lbl">A1</span><span class="val">${c.A1}</span></div>
+          <div class="counter c-A2"><span class="lbl">A2</span><span class="val">${c.A2}</span></div>
+          <div class="counter c-M"><span class="lbl">M</span><span class="val">${c.M}</span></div>
+        </div>
+      </button>`;
+  }).join('');
+
+  grid.querySelectorAll('.area-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pdf = btn.getAttribute('data-pdf');
+      const area = btn.getAttribute('data-area');
+      const win = window.open(pdf, '_blank');
+      if (!win){
+        setStatus(`⚠️ Não foi possível abrir o PDF de ${area}. Verifique se o arquivo existe.`, 'error');
+      } else {
+        setStatus(`📄 Abrindo diagnóstico de ${area}...`, 'ok');
+      }
+    });
+  });
+}
+
+const statusBar = document.getElementById('statusBar');
+function setStatus(msg, tipo){
+  statusBar.textContent = msg;
+  statusBar.className = 'show' + (tipo ? ' ' + tipo : '');
+  if(tipo === 'ok') setTimeout(() => statusBar.classList.remove('show'), 4000);
+}
+
+/* ============================================================
+   INIT (Carregamento e Atualização Automática)
+   ============================================================ */
+(async function init(){
+  setStatus('⏳ Buscando dados atualizados no servidor...');
+  await carregarArquivoAutomatico();
+  
+  // Atualização silenciosa a cada 60 segundos
+  setInterval(async () => {
+    try {
+      const resp = await fetch(`./Pasta1.xlsx?t=${new Date().getTime()}`, { cache: 'no-store' });
+      if(resp.ok){
+        const buf = await resp.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array', cellDates:true});
+        parseWorkbook(wb);
+        renderAreas();
+      }
+    } catch(e) {
+      console.log("Falha no auto-refresh", e);
+    }
+  }, 60000); 
+})();
+</script>
+</body>
+</html>
