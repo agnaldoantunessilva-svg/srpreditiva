@@ -117,6 +117,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    min-height: 180px;
   }
   .area-btn::before{
     content: "";
@@ -132,42 +133,55 @@
   }
   .area-btn:active{ transform: translateY(0); }
 
-  /* NOME DA ÁREA GRANDE E CENTRALIZADO */
+  /* NOME DA ÁREA BEM GRANDE E CENTRALIZADO */
   .area-name{
-    font-size: 2.4rem; font-weight: 800; letter-spacing: 0.05em;
-    text-transform: uppercase; margin-bottom: 1rem;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-size: 2.8rem; 
+    font-weight: 800; 
+    letter-spacing: 0.05em;
+    text-transform: uppercase; 
+    margin-bottom: 1.2rem;
     font-family: var(--font-mono);
     width: 100%;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255,255,255,0.2);
   }
 
-  /* CONTADORES COMPACTOS (Como no rascunho) */
+  /* CONTADORES SEM QUADRINHOS */
   .counters{
     display: flex;
     justify-content: center;
-    gap: 1.5rem; /* Espaçamento horizontal entre as colunas */
+    gap: 2rem; /* Espaçamento entre as informações */
     width: 100%;
   }
+  
   .counter{
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 0.2rem;
   }
+
+  /* LETRAS TAMANHO MÉDIO */
   .counter .lbl{
-    font-size: .75rem; font-weight: 700;
-    text-transform: uppercase; color: var(--muted);
-    font-family: var(--font-mono); margin-bottom: .2rem;
+    font-size: 1.1rem; 
+    font-weight: 700;
+    font-family: var(--font-mono);
   }
-  
-  /* NÚMEROS MENORES */
+
+  /* CORES DAS LETRAS */
+  .counter.c-N .lbl { color: var(--txt); } /* N Branco/Cinza claro */
+  .counter.c-A1 .lbl { color: #fbbf24; } /* A1 Amarelo */
+  .counter.c-A2 .lbl { color: #ef4444; } /* A2 Vermelho */
+  .counter.c-M .lbl { color: #8b9bb4; }  /* M Cinza */
+
+  /* NÚMEROS PEQUENOS */
   .counter .val{
-    font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800;
+    font-family: var(--font-mono); 
+    font-size: 1.1rem; 
+    font-weight: 400;
+    color: var(--muted);
     line-height: 1;
   }
-  .counter.c-N .val{ color: #34d399; }
-  .counter.c-A1 .val{ color: #fbbf24; }
-  .counter.c-A2 .val{ color: #fb923c; }
-  .counter.c-M .val{ color: #a78bfa; }
 
   .area-btn.no-data{ opacity: 0.65; }
 
@@ -176,9 +190,8 @@
     header{padding:.75rem 1rem}
     .header-left img.logo{ height: 80px; }
     header h1{display:none}
-    .area-name{font-size: 1.8rem;}
+    .area-name{font-size: 2rem;}
     .counters{gap: 1rem;}
-    .counter .val{font-size: 1.2rem;}
   }
 </style>
 </head>
@@ -186,13 +199,11 @@
 
 <header>
   <div class="header-left">
-    <!-- LOGO 120px -->
     <img src="innova.png" alt="Innova" class="logo" onerror="this.style.display='none'">
     <h1>🔧 Op. Mecânico <span class="badge">Montenegro RS</span></h1>
   </div>
   <div class="header-right">
     <div id="clock"></div>
-    <!-- Botão Atualizar Ocultado -->
   </div>
 </header>
 <div id="statusBar"></div>
@@ -214,9 +225,6 @@ function tick(){
 }
 setInterval(tick, 1000); tick();
 
-/* ============================================================
-   ÁREAS OPERACIONAIS
-   ============================================================ */
 const AREAS = [
   { key: 'BMS1',        label: 'BMS1',        pdf: 'BMS 1- Diagnóstico detalhado dos Alarmados.pdf' },
   { key: 'BMS2',        label: 'BMS2',        pdf: 'BMS 2- Diagnóstico detalhado dos Alarmados.pdf' },
@@ -249,9 +257,6 @@ function setorMatchesArea(setor, areaKey){
   return false;
 }
 
-/* ============================================================
-   LEITURA DA PLANILHA E ATUALIZAÇÃO AUTOMÁTICA
-   ============================================================ */
 const DB = { diagnostico: {}, updatedAt: null };
 
 async function carregarArquivoAutomatico(){
@@ -339,7 +344,7 @@ function renderAreas(){
     return `
       <button class="area-btn ${semDados ? 'no-data' : ''}" data-pdf="${encodeURI(a.pdf)}" data-area="${a.key}">
         <div class="area-name">
-          <span>${a.label}</span>
+          ${a.label}
         </div>
         <div class="counters">
           <div class="counter c-N"><span class="lbl">N</span><span class="val">${c.N}</span></div>
@@ -371,9 +376,6 @@ function setStatus(msg, tipo){
   if(tipo === 'ok') setTimeout(() => statusBar.classList.remove('show'), 4000);
 }
 
-/* ============================================================
-   INIT (Carregamento e Atualização Automática)
-   ============================================================ */
 (async function init(){
   setStatus('⏳ Buscando dados atualizados no servidor...');
   await carregarArquivoAutomatico();
